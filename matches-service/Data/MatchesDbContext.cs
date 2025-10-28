@@ -18,7 +18,11 @@ namespace MatchesService.Data
             modelBuilder.Entity<Match>(e =>
             {
                 e.Property(p => p.Status).HasMaxLength(32);
+                e.Property(p => p.FoulsHome).HasDefaultValue(0);
+                e.Property(p => p.FoulsAway).HasDefaultValue(0);
+                e.Property(p => p.Quarter).HasDefaultValue(1);
                 e.Property(p => p.TimeRemaining).HasDefaultValue(600);
+                e.Property(p => p.TimerRunning).HasDefaultValue(false);
                 e.Property(p => p.CreatedAtUtc).HasDefaultValueSql("GETUTCDATE()");
 
                 e.HasIndex(p => p.DateTime);
@@ -27,7 +31,9 @@ namespace MatchesService.Data
                 e.ToTable(tb =>
                 {
                     tb.HasCheckConstraint("CK_Match_HomeAway_Distinct", "[HomeTeamId] <> [AwayTeamId]");
-                    tb.HasCheckConstraint("CK_Match_Quarter_Positive", "[Quarter] >= 1");
+                    tb.HasCheckConstraint("CK_Match_Quarter_Range", "[Quarter] BETWEEN 1 AND 4");
+                    tb.HasCheckConstraint("CK_Match_Fouls_NonNegative", "[FoulsHome] >= 0 AND [FoulsAway] >= 0");
+                    tb.HasCheckConstraint("CK_Match_TimeRemaining_NonNegative", "[TimeRemaining] >= 0");
                 });
             });
         }

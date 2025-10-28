@@ -4,6 +4,7 @@ using MatchesService.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MatchesService.Migrations
 {
     [DbContext(typeof(MatchesDbContext))]
-    partial class MatchesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251101120000_UpdateMatchSchema")]
+    partial class UpdateMatchSchema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -123,9 +126,9 @@ namespace MatchesService.Migrations
 
                     b.ToTable("Matches", t =>
                         {
-                            t.HasCheckConstraint("CK_Match_HomeAway_Distinct", "[HomeTeamId] <> [AwayTeamId]");
-
                             t.HasCheckConstraint("CK_Match_Fouls_NonNegative", "[FoulsHome] >= 0 AND [FoulsAway] >= 0");
+
+                            t.HasCheckConstraint("CK_Match_HomeAway_Distinct", "[HomeTeamId] <> [AwayTeamId]");
 
                             t.HasCheckConstraint("CK_Match_Quarter_Range", "[Quarter] BETWEEN 1 AND 4");
 
@@ -226,8 +229,8 @@ namespace MatchesService.Migrations
             modelBuilder.Entity("MatchesService.Models.TeamWin", b =>
                 {
                     b.HasOne("MatchesService.Models.Match", "Match")
-                        .WithMany()
-                        .HasForeignKey("MatchId")
+                        .WithOne("TeamWin")
+                        .HasForeignKey("MatchesService.Models.TeamWin", "MatchId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -239,6 +242,9 @@ namespace MatchesService.Migrations
                     b.Navigation("Fouls");
 
                     b.Navigation("ScoreEvents");
+
+                    b.Navigation("TeamWin")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

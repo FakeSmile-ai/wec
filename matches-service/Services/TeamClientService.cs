@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -12,11 +13,17 @@ public class TeamsServiceOptions
     public string BaseUrl { get; set; } = "http://teams-service:8082/api/teams";
 }
 
+public record TeamValidationResult(bool IsValid, bool ServiceAvailable, TeamSummary? HomeTeam, TeamSummary? AwayTeam)
+{
+    public bool HomeExists => HomeTeam is not null;
+    public bool AwayExists => AwayTeam is not null;
+}
+
 public interface ITeamClientService
 {
     Task<IReadOnlyList<TeamSummary>> GetTeamsAsync(CancellationToken cancellationToken = default);
     Task<TeamSummary?> GetTeamAsync(int teamId, CancellationToken cancellationToken = default);
-    Task<bool> TeamsExistAsync(int homeTeamId, int awayTeamId, CancellationToken cancellationToken = default);
+    Task<TeamValidationResult> ValidateTeamsAsync(int homeTeamId, int awayTeamId, CancellationToken cancellationToken = default);
 }
 
 public class TeamClientService : ITeamClientService
@@ -64,43 +71,90 @@ public class TeamClientService : ITeamClientService
 
         try
         {
-            using var response = await _httpClient.GetAsync($"{_baseUrl}/{teamId}", cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Team {TeamId} not found. Status: {StatusCode}", teamId, response.StatusCode);
-                return null;
-            }
-
-            var team = await response.Content.ReadFromJsonAsync<TeamSummary>(cancellationToken: cancellationToken);
-            if (team is null)
-            {
-                var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-                var parsed = ParseSingle(document.RootElement);
-                return parsed;
-            }
-
-            return team;
+            return await FetchTeamAsync(teamId, cancellationToken);
         }
-        catch (Exception ex)
+        catch (TeamsServiceUnavailableException ex)
         {
-            _logger.LogError(ex, "Error retrieving team {TeamId}", teamId);
+            _logger.LogError(ex, "Teams service unavailable when retrieving team {TeamId}", teamId);
             return null;
         }
     }
 
-    public async Task<bool> TeamsExistAsync(int homeTeamId, int awayTeamId, CancellationToken cancellationToken = default)
+    public async Task<TeamValidationResult> ValidateTeamsAsync(int homeTeamId, int awayTeamId, CancellationToken cancellationToken = default)
     {
-        if (homeTeamId <= 0 || awayTeamId <= 0 || homeTeamId == awayTeamId) return false;
-
-        var tasks = new[]
+        if (homeTeamId <= 0 || awayTeamId <= 0 || homeTeamId == awayTeamId)
         {
-            GetTeamAsync(homeTeamId, cancellationToken),
-            GetTeamAsync(awayTeamId, cancellationToken)
-        };
+            return new TeamValidationResult(false, true, null, null);
+        }
 
-        await Task.WhenAll(tasks);
-        return tasks[0].Result is not null && tasks[1].Result is not null;
+        try
+        {
+            var homeTask = FetchTeamAsync(homeTeamId, cancellationToken);
+            var awayTask = FetchTeamAsync(awayTeamId, cancellationToken);
+
+            await Task.WhenAll(homeTask, awayTask);
+
+            var home = await homeTask;
+            var away = await awayTask;
+
+            if (home is null || away is null)
+            {
+                return new TeamValidationResult(false, true, home, away);
+            }
+
+            return new TeamValidationResult(true, true, home, away);
+        }
+        catch (TeamsServiceUnavailableException ex)
+        {
+            _logger.LogError(ex, "Teams service unavailable while validating teams {HomeTeamId} vs {AwayTeamId}", homeTeamId, awayTeamId);
+            return new TeamValidationResult(false, false, null, null);
+        }
+    }
+
+    private async Task<TeamSummary?> FetchTeamAsync(int teamId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await _httpClient.GetAsync($"{_baseUrl}/{teamId}", cancellationToken);
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                _logger.LogInformation("Team {TeamId} not found in teams-service", teamId);
+                return null;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new TeamsServiceUnavailableException($"Teams service returned status {(int)response.StatusCode} ({response.StatusCode})");
+            }
+
+            var team = await response.Content.ReadFromJsonAsync<TeamSummary>(cancellationToken: cancellationToken);
+            if (team is not null)
+            {
+                return team;
+            }
+
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            return ParseSingle(document.RootElement);
+        }
+        catch (TeamsServiceUnavailableException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new TeamsServiceUnavailableException("Error connecting to teams-service", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error retrieving team {TeamId}", teamId);
+            return null;
+        }
     }
 
     private static IReadOnlyList<TeamSummary> ParseTeams(JsonElement root)
@@ -151,4 +205,10 @@ public class TeamClientService : ITeamClientService
 
         return null;
     }
+}
+
+public sealed class TeamsServiceUnavailableException : Exception
+{
+    public TeamsServiceUnavailableException(string message) : base(message) { }
+    public TeamsServiceUnavailableException(string message, Exception innerException) : base(message, innerException) { }
 }

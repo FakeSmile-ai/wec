@@ -51,8 +51,13 @@ public class MatchService : IMatchService
             return (false, "El equipo local y visitante deben ser distintos", null);
         }
 
-        var teamsExist = await _teamClient.TeamsExistAsync(request.HomeTeamId, request.AwayTeamId, cancellationToken);
-        if (!teamsExist)
+        var validation = await _teamClient.ValidateTeamsAsync(request.HomeTeamId, request.AwayTeamId, cancellationToken);
+        if (!validation.ServiceAvailable)
+        {
+            return (false, "No se pudo validar los equipos porque el servicio de equipos no está disponible. Intenta nuevamente más tarde.", null);
+        }
+
+        if (!validation.IsValid)
         {
             return (false, "Alguno de los equipos seleccionados no existe", null);
         }
