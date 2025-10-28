@@ -1,310 +1,278 @@
-import { Component, computed, effect, inject, OnDestroy, PLATFORM_ID, signal } from '@angular/core';
-import { isPlatformBrowser, NgIf } from '@angular/common';
+import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs/operators';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
+import * as signalR from '@microsoft/signalr';
 
-// Diálogos
-import { StandingsDialogComponent } from '../../pages/standings/standings-dialog.component';
-import { NewGameDialogComponent } from '../../pages/matches/new-game-dialog.component';
-import { RegisterTeamDialogComponent } from '../../pages/teams/register-team-dialog.component';
+import { MatchesService, MatchModel, TeamSide } from '@app/services/api/matches.service';
 import { PickMatchDialogComponent } from './match-dialog.component';
-
-// Servicios API
-import { ApiService } from '../../services/api/api.service';
-import { RealtimeService } from '@app/services/realtime.service';
-
-import { AuthenticationService } from '@app/services/api/authentication.service';
-
-type Possession = 'none' | 'home' | 'away';
 
 @Component({
   selector: 'app-control-panel',
   standalone: true,
-  imports: [RouterLink, MatDialogModule, NgIf],
+  imports: [CommonModule, RouterLink, MatDialogModule, MatIconModule, FormsModule],
   templateUrl: './control-panel.component.html',
   styleUrls: ['./control-panel.component.scss']
 })
 export class ControlPanelComponent implements OnDestroy {
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  public rt = inject(RealtimeService);
-  private api = inject(ApiService);
-  private platformId = inject(PLATFORM_ID);
-  private dialog = inject(MatDialog);
-  private auth = inject(AuthenticationService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly matchesService = inject(MatchesService);
+  private readonly dialog = inject(MatDialog);
 
-  matchId = toSignal(this.route.paramMap.pipe(map(p => Number(p.get('id') ?? '1'))), { initialValue: 1 });
+  private hub?: signalR.HubConnection;
 
-  homeTeamId?: number;
-  awayTeamId?: number;
-  homeName = 'HOME';
-  awayName = 'AWAY';
+  match = signal<MatchModel | null>(null);
+  loading = signal<boolean>(false);
+  pendingAction = signal<boolean>(false);
 
-  status = signal<string>('Scheduled');
-  readOnly = computed(() => {
-    const s = (this.status() || '').toLowerCase();
-    return s === 'finished' || s === 'canceled' || s === 'suspended';
+  timerDisplay = computed(() => {
+    const seconds = this.match()?.timeRemaining ?? 0;
+    const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = Math.max(0, seconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${secs}`;
   });
 
-  period = computed(() => this.rt.quarter());
-  possession = signal<Possession>('none');
-  homeScore = signal(0);
-  awayScore = signal(0);
-
-  homeFouls = computed(() => this.rt.fouls().home);
-  awayFouls = computed(() => this.rt.fouls().away);
-  canScore = computed(() => this.rt.timerRunning() && !this.readOnly());
-
-  clock = computed(() => {
-    const tl = this.rt.timeoutRunning() ? this.rt.timeoutLeft() : this.rt.timeLeft();
-    const m = Math.floor(tl / 60), s = tl % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  statusLabel = computed(() => {
+    const status = (this.match()?.status ?? '').toLowerCase();
+    switch (status) {
+      case 'scheduled':
+        return 'Programado';
+      case 'live':
+        return 'En juego';
+      case 'finished':
+        return 'Finalizado';
+      default:
+        return this.match()?.status ?? '—';
+    }
   });
-
-  private prevSecs = -1;
-  private armed = true;
-  private zeroGuardUntil = 0;
-  private prevRunning = false;
 
   constructor() {
-    // Sincroniza marcador local
-    effect(() => {
-      const s = this.rt.score();
-      this.homeScore.set(s.home);
-      this.awayScore.set(s.away);
-    });
-
-    // Fin del partido
-    effect(() => {
-      const over = this.rt.gameOver?.();
-      if (!over) return;
-      this.showGameEndAlert(over.home, over.away, over.winner);
-    });
-
-    // Auto-advance
-    effect(() => {
-      const secs = this.rt.timeLeft();
-      const running = this.rt.timerRunning();
-      const guardActive = Date.now() < this.zeroGuardUntil;
-      if (!guardActive && this.prevSecs > 0 && secs === 0 && this.prevRunning) {
-        this.tryAutoAdvance();
+    this.route.paramMap.subscribe(params => {
+      const id = Number(params.get('id'));
+      if (Number.isFinite(id) && id > 0) {
+        this.loadMatch(id);
       }
-      if (secs > 0) this.armed = true;
-      this.prevSecs = secs;
-      this.prevRunning = running;
-    });
-
-    // Carga inicial
-    effect((onCleanup) => {
-      const id = this.matchId();
-      if (!id) return;
-
-      this.api.getMatch(id).subscribe({
-        next: (m: any) => {
-          this.homeTeamId = m.homeTeamId;
-          this.awayTeamId = m.awayTeamId;
-          this.homeName = m.homeTeam ?? 'HOME';
-          this.awayName = m.awayTeam ?? 'AWAY';
-          this.homeScore.set(m.homeScore ?? 0);
-          this.awayScore.set(m.awayScore ?? 0);
-          this.status.set(m.status ?? 'Scheduled');
-          if (typeof m.quarter === 'number') this.rt.quarter.set(m.quarter);
-          if (m.timer) this.rt.hydrateTimerFromSnapshot({ ...m.timer, quarter: m.quarter });
-          if (m.fouls) this.rt.hydrateFoulsFromSnapshot(m.fouls);
-        },
-        error: (e) => console.error('getMatch error', e)
-      });
-
-      let disposed = false;
-      if (isPlatformBrowser(this.platformId)) {
-        (async () => {
-          try {
-            await this.rt.disconnect();
-            if (!disposed) await this.rt.connect(id);
-          } catch (err) {
-            console.error('SignalR connect error', err);
-          }
-        })();
-      }
-      onCleanup(() => { disposed = true; this.rt.disconnect(); });
     });
   }
 
-  ngOnDestroy(): void { this.rt.disconnect(); }
-
-  get isAdmin(): boolean {
-    try {
-      if (typeof this.auth.isAdmin === 'function') return this.auth.isAdmin();
-      const saved = localStorage.getItem('user');
-      const user = saved ? JSON.parse(saved) : null;
-      return user?.role?.name?.toLowerCase() === 'admin';
-    } catch { return false; }
+  ngOnDestroy(): void {
+    this.disconnectHub();
   }
 
-  goBack() { if (this.isAdmin) this.router.navigate(['/admin']); else this.router.navigate(['/score', this.matchId()]); }
-  goScoreboard() { this.router.navigate(['/score', this.matchId()]); }
-
-  logout() {
-    if (typeof this.auth.logout === 'function') this.auth.logout();
-    else { localStorage.removeItem('token'); localStorage.removeItem('user'); }
-    this.router.navigate(['/login']);
+  get hasMatchSelected(): boolean {
+    return !!this.match();
   }
 
-  openPickMatch() {
-    const ref = this.dialog.open(PickMatchDialogComponent, { width: '720px', disableClose: false });
-    ref.afterClosed().subscribe((row?: { id: number }) => { if (row) this.router.navigate(['/control', row.id]); });
+  get matchId(): number | null {
+    return this.match()?.id ?? null;
   }
 
-  private denyIfLocked(): boolean {
-    if (!this.readOnly()) return false;
+  get homeName(): string {
+    return this.match()?.homeTeamName || 'Local';
+  }
+
+  get awayName(): string {
+    return this.match()?.awayTeamName || 'Visita';
+  }
+
+  get quarter(): number {
+    return this.match()?.quarter ?? 1;
+  }
+
+  get isFinished(): boolean {
+    return (this.match()?.status ?? '').toLowerCase() === 'finished';
+  }
+
+  chooseMatch(): void {
+    const dialogRef = this.dialog.open(PickMatchDialogComponent, { width: '700px' });
+    dialogRef.afterClosed().subscribe(result => {
+      if (!result?.id) return;
+      this.router.navigate(['/control', result.id]);
+    });
+  }
+
+  refresh(): void {
+    const id = this.matchId;
+    if (id) {
+      this.loadMatch(id);
+    }
+  }
+
+  addPoints(team: TeamSide, points: number): void {
+    if (!this.matchId || this.isFinished) return;
+    this.pendingAction.set(true);
+    this.matchesService.addScore(this.matchId, team, points).subscribe({
+      next: updated => {
+        this.match.set(updated);
+        this.pendingAction.set(false);
+      },
+      error: error => this.handleError('No se pudo actualizar el marcador', error)
+    });
+  }
+
+  adjustFoul(team: TeamSide, amount: number): void {
+    if (!this.matchId || this.isFinished) return;
+    this.pendingAction.set(true);
+    this.matchesService.addFoul(this.matchId, team, amount).subscribe({
+      next: updated => {
+        this.match.set(updated);
+        this.pendingAction.set(false);
+      },
+      error: error => this.handleError('No se pudo registrar la falta', error)
+    });
+  }
+
+  controlTimer(action: 'start' | 'pause' | 'resume' | 'reset'): void {
+    if (!this.matchId || this.isFinished) return;
+    this.pendingAction.set(true);
+    this.matchesService.updateTimer(this.matchId, action).subscribe({
+      next: updated => {
+        this.match.set(updated);
+        this.pendingAction.set(false);
+      },
+      error: error => this.handleError('No se pudo actualizar el temporizador', error)
+    });
+  }
+
+  nextQuarter(): void {
+    if (!this.matchId || this.isFinished) return;
+    this.pendingAction.set(true);
+    this.matchesService.nextQuarter(this.matchId).subscribe({
+      next: updated => {
+        this.match.set(updated);
+        this.pendingAction.set(false);
+      },
+      error: error => this.handleError('No se pudo avanzar de cuarto', error)
+    });
+  }
+
+  finishMatch(): void {
+    if (!this.matchId) return;
     Swal.fire({
-      icon: 'info', title: 'Partido bloqueado', text: 'Este partido ya finalizó o no admite cambios.',
-      timer: 1600, showConfirmButton: false, position: 'top'
-    });
-    return true;
-  }
-
-  private tryAutoAdvance(retry = 0) {
-    const id = this.matchId();
-    const prevQuarter = this.rt.quarter();
-    this.api.autoAdvanceQuarter(id).subscribe({
-      next: (res: any) => {
-        const q = res?.quarter ?? prevQuarter;
-        const ended = q > prevQuarter ? q - 1 : q;
-        if (ended < 4) this.showQuarterEndAlert(ended);
-      },
-      error: (e) => { if (retry < 8) setTimeout(() => this.tryAutoAdvance(retry + 1), 300); }
-    });
-  }
-
-  add(teamId: number | undefined, points: 1 | 2 | 3) {
-    if (!teamId || !this.canScore()) return;
-    this.api.createScore(this.matchId(), { teamId, points }).subscribe();
-  }
-
-  minus1(teamId: number | undefined) {
-    if (!teamId || !this.canScore()) return;
-    this.api.adjustScore(this.matchId(), { teamId, delta: -1 }).subscribe();
-  }
-
-  foul(teamId: number | undefined, delta: 1 | -1) {
-    if (this.denyIfLocked()) return;
-    if (!teamId) return;
-    this.api.adjustFoul(this.matchId(), { teamId, delta }).subscribe();
-  }
-
-  start() {
-    if (this.denyIfLocked()) return;
-    this.api.startTimer(this.matchId()).subscribe({
-      next: async () => {
-        if (!isPlatformBrowser(this.platformId)) return;
-        const q = this.rt.quarter();
-        const names = ['', 'Primer', 'Segundo', 'Tercer', 'Cuarto'];
-        await Swal.fire({
-          title: `Inicio del ${names[q] ?? q + 'º'} cuarto`,
-          icon: 'success', position: 'top', timer: 1200, showConfirmButton: false
-        });
-      },
-      error: async (e) => {
-        const status = e?.status;
-        if (status === 403) {
-          await Swal.fire({ icon: 'error', title: 'Start timer', text: 'Necesitas rol Admin.', confirmButtonText: 'OK' });
-        } else if (status === 401) {
-          await Swal.fire({ icon: 'warning', title: 'Sesión requerida', text: 'Vuelve a iniciar sesión.', confirmButtonText: 'Ir a login' });
-          this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
-        } else {
-          await Swal.fire({ icon: 'error', title: 'Error al iniciar', text: e?.error ?? e?.message ?? 'Error desconocido' });
-        }
-      }
-    });
-  }
-
-  stop() {
-    if (this.denyIfLocked()) return;
-    this.armed = false;
-    this.prevSecs = 0;
-    this.zeroGuardUntil = Date.now() + 1500;
-    this.api.pauseTimer(this.matchId()).subscribe();
-  }
-
-  resume() { if (!this.denyIfLocked()) this.api.resumeTimer(this.matchId()).subscribe(); }
-
-  reset() {
-    if (this.denyIfLocked()) return;
-    this.armed = false;
-    this.prevSecs = 0;
-    this.zeroGuardUntil = Date.now() + 1500;
-    this.api.resetTimer(this.matchId()).subscribe();
-  }
-
-  timeout(sec: number) {
-    if (this.denyIfLocked() || this.rt.timeoutRunning()) return;
-    this.stop();
-    this.rt.startTimeout(sec, () => this.resume());
-  }
-
-  periodPlus() {
-    if (this.denyIfLocked()) return;
-    const ended = this.rt.quarter();
-    this.api.advanceQuarter(this.matchId()).subscribe({
-      next: async () => { await this.showQuarterEndAlert(ended); }
-    });
-  }
-
-  posLeft() { this.possession.set('home'); }
-  posNone() { this.possession.set('none'); }
-  posRight() { this.possession.set('away'); }
-
-  registerTeam() {
-    if (!this.isAdmin) return;
-    const ref = this.dialog.open(RegisterTeamDialogComponent, { width: '520px', disableClose: true });
-    ref.afterClosed().subscribe(result => {
-      if (!result) return;
-      this.api.createTeam(result).subscribe({
-        next: async (res: any) => { await Swal.fire({ icon: 'success', title: `Team "${res?.name ?? result.name}" created`, timer: 1200, showConfirmButton: false, position: 'top' }); },
-        error: async (e) => { await Swal.fire({ icon: 'error', title: 'Error creating team', text: e?.error ?? e?.message ?? 'Unknown error' }); }
+      title: 'Finalizar partido',
+      text: '¿Deseas marcar el partido como finalizado?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, finalizar',
+      cancelButtonText: 'Cancelar'
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      this.pendingAction.set(true);
+      this.matchesService.finishMatch(this.matchId!).subscribe({
+        next: updated => {
+          this.match.set(updated);
+          this.pendingAction.set(false);
+          Swal.fire({
+            title: 'Partido finalizado',
+            icon: 'success',
+            timer: 1800,
+            showConfirmButton: false
+          });
+        },
+        error: error => this.handleError('No se pudo finalizar el partido', error)
       });
     });
   }
 
-  showStandings() {
-    this.api.getStandings().subscribe({
-      next: (rows) => this.dialog.open(StandingsDialogComponent, { width: '520px', data: { rows } }),
-      error: (e) => console.error('getStandings error', e)
+  private loadMatch(id: number): void {
+    this.loading.set(true);
+    this.matchesService.getMatch(id).subscribe({
+      next: match => {
+        this.loading.set(false);
+        this.match.set(match);
+        this.connectToHub(match.id);
+      },
+      error: error => {
+        this.loading.set(false);
+        this.match.set(null);
+        this.handleError('No se pudo cargar el partido', error);
+      }
     });
   }
 
-  private async showQuarterEndAlert(endedQuarter: number) {
-    if (!isPlatformBrowser(this.platformId)) return;
-    const names = ['', 'Primer', 'Segundo', 'Tercer', 'Cuarto'];
-    await Swal.fire({
-      title: `Fin del ${names[endedQuarter] ?? endedQuarter + 'º'} cuarto`,
-      icon: 'info', position: 'top', timer: 1600, timerProgressBar: true,
-      showConfirmButton: false, backdrop: true, background: '#ffffff', color: '#111'
+  private handleError(message: string, error: any): void {
+    this.pendingAction.set(false);
+    console.error(message, error);
+    Swal.fire({
+      title: message,
+      text: error?.error?.error ?? error?.message ?? 'Error desconocido',
+      icon: 'error'
     });
   }
 
-  private async showGameEndAlert(home: number, away: number, winner: 'home' | 'away' | 'draw') {
-    if (!isPlatformBrowser(this.platformId)) return;
-    let text = winner === 'draw'
-      ? `Empate ${home} - ${away}`
-      : winner === 'home'
-        ? `¡Ganó ${this.homeName}! ${home} - ${away}`
-        : `¡Ganó ${this.awayName}! ${away} - ${home}`;
-    await Swal.fire({
-      title: 'Fin del partido',
-      text,
-      icon: 'success',
-      position: 'top',
-      timer: 3000,
-      timerProgressBar: true,
-      showConfirmButton: false,
-      backdrop: true,
-      background: '#ffffff',
-      color: '#111'
+  private async connectToHub(matchId: number): Promise<void> {
+    await this.disconnectHub();
+    this.hub = new signalR.HubConnectionBuilder()
+      .withUrl(`/hub/matches?matchId=${matchId}`)
+      .withAutomaticReconnect()
+      .build();
+
+    this.hub.on('matchUpdated', (payload: MatchModel) => {
+      if (payload?.id === this.matchId) {
+        this.match.set(payload);
+      }
     });
+
+    this.hub.on('scoreUpdated', (payload: { homeScore: number; awayScore: number }) => {
+      this.mergeMatch({ homeScore: payload.homeScore, awayScore: payload.awayScore });
+    });
+
+    this.hub.on('foulsUpdated', (payload: { homeFouls: number; awayFouls: number }) => {
+      this.mergeMatch({ foulsHome: payload.homeFouls, foulsAway: payload.awayFouls });
+    });
+
+    const syncTimer = (running: boolean, seconds: number) => {
+      this.mergeMatch({ timerRunning: running, timeRemaining: seconds });
+    };
+
+    this.hub.on('timerStarted', (payload: { remainingSeconds: number }) => syncTimer(true, payload.remainingSeconds));
+    this.hub.on('timerResumed', (payload: { remainingSeconds: number }) => syncTimer(true, payload.remainingSeconds));
+    this.hub.on('timerPaused', (payload: { remainingSeconds: number }) => syncTimer(false, payload.remainingSeconds));
+    this.hub.on('timerReset', (payload: { remainingSeconds: number }) => syncTimer(false, payload.remainingSeconds));
+    this.hub.on('timerUpdated', (payload: { remainingSeconds: number }) => syncTimer(this.match()?.timerRunning ?? false, payload.remainingSeconds));
+
+    this.hub.on('quarterChanged', (payload: { quarter: number }) => {
+      if (typeof payload?.quarter === 'number') {
+        this.mergeMatch({ quarter: payload.quarter });
+      }
+    });
+
+    this.hub.on('gameEnded', (payload: { home: number; away: number; winner: string }) => {
+      this.mergeMatch({ status: 'Finished' });
+      Swal.fire({
+        title: 'Partido finalizado',
+        text: `Marcador final ${payload.home} - ${payload.away}`,
+        icon: 'info',
+        timer: 2500,
+        showConfirmButton: false
+      });
+    });
+
+    try {
+      await this.hub.start();
+    } catch (error) {
+      console.error('No se pudo conectar al hub de partidos', error);
+    }
+  }
+
+  private async disconnectHub(): Promise<void> {
+    if (this.hub) {
+      try {
+        await this.hub.stop();
+      } catch (error) {
+        console.warn('Error deteniendo conexión SignalR', error);
+      }
+      this.hub = undefined;
+    }
+  }
+
+  private mergeMatch(partial: Partial<MatchModel>): void {
+    const current = this.match();
+    if (!current) return;
+    this.match.set({ ...current, ...partial });
   }
 }

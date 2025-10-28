@@ -147,7 +147,7 @@ export class RealtimeService {
     if (this.hub) return;
 
     this.hub = new signalR.HubConnectionBuilder()
-      .withUrl(`/hubs/score?matchId=${matchId}`)
+      .withUrl(`/hub/matches?matchId=${matchId}`)
       .withAutomaticReconnect()
       .build();
 
@@ -192,6 +192,16 @@ export class RealtimeService {
       this.timerRunning.set(false);
       this.stopTick();
       this.endsAt = undefined;
+    });
+
+    this.hub.on('timerUpdated', (t: { remainingSeconds: number }) => {
+      this.timeLeft.set(t.remainingSeconds);
+    });
+
+    this.hub.on('matchUpdated', (payload: { quarter?: number }) => {
+      if (typeof payload?.quarter === 'number') {
+        this.quarter.set(payload.quarter);
+      }
     });
 
     // Quarter

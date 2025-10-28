@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { map } from 'rxjs/operators';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -7,7 +8,29 @@ export class ApiService {
   private base = '/api';
 
   getMatch(id: number) {
-    return this.http.get<any>(`${this.base}/matches/${id}`);
+    return this.http.get<any>(`${this.base}/matches/${id}`).pipe(
+      map(match => {
+        const timer = match?.timer ?? {};
+        const foulsHome = match?.foulsHome ?? match?.homeFouls ?? timer?.fouls?.home ?? 0;
+        const foulsAway = match?.foulsAway ?? match?.awayFouls ?? timer?.fouls?.away ?? 0;
+        return {
+          ...match,
+          homeTeam: match?.homeTeamName ?? match?.homeTeam ?? 'Local',
+          awayTeam: match?.awayTeamName ?? match?.awayTeam ?? 'Visita',
+          homeFouls: foulsHome,
+          awayFouls: foulsAway,
+          fouls: {
+            home: foulsHome,
+            away: foulsAway
+          },
+          timer: {
+            running: match?.timerRunning ?? timer?.running ?? false,
+            remainingSeconds: match?.timeRemaining ?? timer?.remainingSeconds ?? 0,
+            quarter: match?.quarter ?? timer?.quarter ?? 1
+          }
+        };
+      })
+    );
   }
 
   //SCORE

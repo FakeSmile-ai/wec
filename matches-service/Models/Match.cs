@@ -1,39 +1,50 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace MatchesService.Models
+namespace MatchesService.Models;
+
+public static class MatchStatus
 {
-    public class Match
-    {
-        public int Id { get; set; }
+    public const string Scheduled = "Scheduled";
+    public const string Live = "Live";
+    public const string Finished = "Finished";
+}
 
-        [Range(1, int.MaxValue)]
-        public int HomeTeamId { get; set; }
+public class Match
+{
+    public int Id { get; set; }
 
-        [Range(1, int.MaxValue)]
-        public int AwayTeamId { get; set; }
+    [Range(1, int.MaxValue)]
+    public int HomeTeamId { get; set; }
 
-        [Range(0, int.MaxValue)]
-        public int HomeScore { get; set; }
+    [Range(1, int.MaxValue)]
+    public int AwayTeamId { get; set; }
 
-        [Range(0, int.MaxValue)]
-        public int AwayScore { get; set; }
+    [Range(0, int.MaxValue)]
+    public int HomeScore { get; set; }
 
-        [Range(1, 20)]
-        public int Period { get; set; } = 1;
+    [Range(0, int.MaxValue)]
+    public int AwayScore { get; set; }
 
-        [Required, MaxLength(32)]
-        public string Status { get; set; } = "Scheduled";
+    [Range(0, int.MaxValue)]
+    public int FoulsHome { get; set; }
 
-        public DateTime DateMatch { get; set; }
+    [Range(0, int.MaxValue)]
+    public int FoulsAway { get; set; }
 
-        [Range(60, 7200)]
-        public int QuarterDurationSeconds { get; set; } = 600;
+    [Range(1, 4)]
+    public int Quarter { get; set; } = 1;
 
-        public ICollection<ScoreEvent> ScoreEvents { get; set; } = new List<ScoreEvent>();
-        public ICollection<Foul> Fouls { get; set; } = new List<Foul>();
+    [Range(0, int.MaxValue)]
+    public int TimeRemaining { get; set; } = 600;
 
-        // Concurrencia optimista (opcional recomendado)
-        [Timestamp]
-        public byte[]? RowVersion { get; set; }
-    }
+    public bool TimerRunning { get; set; }
+
+    [Required, MaxLength(32)]
+    public string Status { get; set; } = MatchStatus.Scheduled;
+
+    [Column("DateMatch")]
+    public DateTime DateTime { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
