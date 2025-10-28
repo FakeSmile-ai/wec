@@ -1,0 +1,48 @@
+<div class="topbar">
+  <div class="topbar__inner">
+    <div class="topbar__left">
+      <!-- Marca o nombre del sistema -->
+      <div class="brand">
+        <span class="dot"></span>
+        <strong>Scoreboard</strong>
+      </div>
+    </div>
+
+    <div class="topbar__center">
+      <!-- Botones de navegación -->
+      <button
+        *ngIf="showAdmin"
+        mat-raised-button
+        class="btn btn--primary"
+        (click)="go('/admin')">
+        Admin
+      </button>
+
+      <button
+        *ngIf="showControl && controlId"
+        mat-raised-button
+        class="btn btn--accent"
+        (click)="go('/control/' + controlId)">
+        Control
+      </button>
+
+      <button
+        *ngIf="showScore && scoreId"
+        mat-raised-button
+        class="btn btn--accent"
+        (click)="go('/score/' + scoreId)">
+        Score
+      </button>
+    </div>
+
+    <div class="topbar__right">
+      <button
+        *ngIf="showLogout"
+        mat-stroked-button
+        class="btn btn--ghost btn--danger"
+        (click)="logout()">
+        Logout
+      </button>
+    </div>
+  </div>
+</div>

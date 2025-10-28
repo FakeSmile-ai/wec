@@ -1,0 +1,93 @@
+<!-- HEADER degradado -->
+<header class="page-header">
+  <div class="header-inner">
+    <h1 class="title">{{ id ? 'Editar Jugador' : 'Nuevo Jugador' }}</h1>
+
+    <nav class="actions">
+      <a mat-stroked-button class="pill is-active" routerLink="/players">
+        <mat-icon>groups</mat-icon>
+        Jugadores
+      </a>
+
+      <a mat-stroked-button class="pill" routerLink="/tournaments">
+        <mat-icon>emoji_events</mat-icon>
+        Torneos
+      </a>
+
+      <a mat-button class="link" routerLink="/admin">Admin</a>
+
+      <a mat-raised-button class="pill logout" routerLink="/login">
+        <mat-icon>logout</mat-icon>
+        Logout
+      </a>
+    </nav>
+  </div>
+</header>
+
+<!-- CONTENIDO -->
+<div class="page-container">
+  <mat-card class="surface mat-elevation-z3">
+    <form class="form-grid" [formGroup]="form" (ngSubmit)="save()">
+      
+      <!-- Nombre -->
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Nombre</mat-label>
+        <input matInput formControlName="name" placeholder="Ej. Juan Pérez" />
+        <mat-error *ngIf="form.get('name')?.hasError('required')">
+          El nombre es obligatorio
+        </mat-error>
+        <mat-error *ngIf="form.get('name')?.hasError('minlength')">
+          Mínimo 3 caracteres
+        </mat-error>
+      </mat-form-field>
+
+      <!-- Edad -->
+      <mat-form-field appearance="outline">
+        <mat-label>Edad</mat-label>
+        <input matInput formControlName="age" type="number" placeholder="Ej. 22" />
+        <mat-error *ngIf="form.get('age')?.hasError('required')">
+          La edad es obligatoria
+        </mat-error>
+        <mat-error *ngIf="form.get('age')?.hasError('min')">
+          Debe ser mayor que 0
+        </mat-error>
+      </mat-form-field>
+
+      <!-- Posición -->
+      <mat-form-field appearance="outline">
+        <mat-label>Posición</mat-label>
+        <input matInput formControlName="position" placeholder="Ej. Delantero, Defensa..." />
+      </mat-form-field>
+
+      <!-- Equipo -->
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Equipo</mat-label>
+        <mat-select formControlName="teamId">
+          <mat-option [value]="null">(Sin equipo)</mat-option>
+          <mat-option *ngFor="let t of teams" [value]="t.id">
+            {{ t.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Acciones -->
+      <div class="actions-row">
+        <button
+          mat-raised-button
+          color="primary"
+          class="pill primary"
+          type="submit"
+          [disabled]="form.invalid"
+        >
+          <mat-icon>check</mat-icon>
+          Guardar
+        </button>
+
+        <a mat-stroked-button class="pill" routerLink="/players">
+          <mat-icon>arrow_back</mat-icon>
+          Cancelar
+        </a>
+      </div>
+    </form>
+  </mat-card>
+</div>

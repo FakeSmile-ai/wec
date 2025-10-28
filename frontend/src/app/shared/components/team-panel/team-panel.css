@@ -1,0 +1,15 @@
+.team {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+.score {
+  font-weight: 900;
+  line-height: 1;
+  font-size: clamp(92px, 14vw, 180px);
+  letter-spacing: 0.04em;
+}
+.name {
+  font: 800 clamp(22px, 3vw, 44px)/1 "Impact", system-ui, sans-serif;
+  letter-spacing: 0.06em;
+}

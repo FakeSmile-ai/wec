@@ -1,0 +1,47 @@
+<h2 mat-dialog-title>New Game</h2>
+
+<div mat-dialog-content class="dialog-content" *ngIf="!loading; else loadingTpl">
+  <div class="row">
+    <mat-form-field appearance="outline" class="grow">
+      <mat-label>Home Team</mat-label>
+      <mat-select [formControl]="form.controls.homeTeamId">
+        <mat-option *ngFor="let t of teams" [value]="t.id">{{ t.name }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <button mat-icon-button class="swap" (click)="swap()" aria-label="Swap teams">
+      <mat-icon>swap_horiz</mat-icon>
+    </button>
+
+    <mat-form-field appearance="outline" class="grow">
+      <mat-label>Away Team</mat-label>
+      <mat-select [formControl]="form.controls.awayTeamId">
+        <mat-option *ngFor="let t of teams" [value]="t.id">{{ t.name }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <mat-form-field appearance="outline" class="mins">
+    <mat-label>Minutes per quarter</mat-label>
+    <input matInput type="number" min="1" [formControl]="form.controls.minutes" />
+  </mat-form-field>
+
+  <div class="hint" *ngIf="form.value.homeTeamId && form.value.awayTeamId && form.value.homeTeamId===form.value.awayTeamId">
+    Home and Away must be different teams
+  </div>
+</div>
+
+<ng-template #loadingTpl>
+  <div style="min-width: 420px; padding: 16px 4px;">Loading teams…</div>
+</ng-template>
+
+<div mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancel</button>
+  <button
+    mat-flat-button
+    color="primary"
+    (click)="save()"
+    [disabled]="form.invalid || form.value.homeTeamId===form.value.awayTeamId">
+    Create
+  </button>
+</div>

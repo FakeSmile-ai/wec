@@ -1,0 +1,39 @@
+services:
+  # Nuestro servicio de Node.js
+  app:
+    build: .
+    container_name: players-service-app
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=secret
+      - DB_NAME=players_db
+      - NODE_ENV=development
+    depends_on:
+      db:
+        condition: service_healthy # ¡Cambiado! Ahora espera a que el healthcheck pase
+
+  # El servicio de la base de datos MySQL
+  db:
+    image: mysql:8.0
+    container_name: players-db
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: players_db
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck: # ¡Añadido! Esta es la nueva sección
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql-data:

@@ -1,0 +1,22 @@
+services:
+  report-service:
+    build:
+      context: ..                 # raíz de report-service
+      dockerfile: docker/Dockerfile
+    image: report-service:dev
+    container_name: report-service
+    env_file:
+      - ../.env                   # report-service/.env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

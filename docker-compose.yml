@@ -1,0 +1,177 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Spider12man3"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q 'SQL Server is now ready for client connections' /var/opt/mssql/log/errorlog"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 40s
+
+  api:
+    build:
+      context: ./auth-service
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=authDb;User Id=sa;Password=Spider12man3;TrustServerCertificate=true;"
+      ASPNETCORE_ENVIRONMENT: "Development"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5000:8080"
+    entrypoint: ["dotnet", "AuthService.dll"]
+    volumes:
+      - /home/roberto/.microsoft/usersecrets:/root/.microsoft/usersecrets
+
+  # Frontend (Nginx) 
+  web:
+    build:
+      context: ./frontend
+    depends_on:
+      api:
+        condition: service_started
+      matches-service:
+        condition: service_started
+      teams-service:
+        condition: service_started
+      players-service:
+        condition: service_started
+      report-service:           
+        condition: service_started
+    ports:
+      - "80:80"
+
+  # Postgres para teams-service
+  teams-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: teamsBD
+      POSTGRES_USER: jonathan
+      POSTGRES_PASSWORD: Pollito123
+      TZ: America/Guatemala
+    ports:
+      - "5435:5432"
+    volumes:
+      - teams_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jonathan -d teamsBD"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+
+  teams-service:
+    build:
+      context: ./teams-service
+      dockerfile: Dockerfile
+    depends_on:
+      teams-db:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://teams-db:5432/teamsBD
+      SPRING_DATASOURCE_USERNAME: jonathan
+      SPRING_DATASOURCE_PASSWORD: Pollito123
+      players.service.base-url: http://players-service:3000/api
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_SQL_INIT_MODE: always
+      SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION: "true"
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+
+  # MySQL para players-service
+  players-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: Perrito123
+      MYSQL_DATABASE: playersDb
+      MYSQL_USER: jonathan
+      MYSQL_PASSWORD: Perrito123
+    ports:
+      - "3300:3306"
+    volumes:
+      - players_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin -uroot -pPerrito123 ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+
+  players-service:
+    build:
+      context: ./players-service
+    depends_on:
+      players-db:
+        condition: service_healthy
+    environment:
+      DB_HOST: players-db
+      DB_USER: jonathan
+      DB_PASSWORD: Perrito123
+      DB_NAME: playersDb
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  # Matches (.NET 8 + SQL Server)
+  matches-service:
+    build:
+      context: ./matches-service
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_URLS: "http://+:8081"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=matchesDb;User Id=sa;Password=Spider12man3;TrustServerCertificate=true;MultipleActiveResultSets=true"
+      # 🔧 Base URL del teams-service (termina en /api/teams)
+      TeamsService__BaseUrl: "http://teams-service:8082/api/teams"
+    depends_on:
+      db:
+        condition: service_healthy
+      teams-service:
+        condition: service_started
+    ports:
+      - "5002:8081"   # Swagger/Health locales: http://localhost:5002
+    restart: unless-stopped
+
+  # Redis para report-service
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+    restart: unless-stopped
+
+  # report-service (FastAPI) 
+  report-service:
+    build:
+      context: ./report-service
+      dockerfile: docker/Dockerfile
+    env_file:
+      - ./report-service/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8084:8080"        # Health: http://localhost:8084/health
+    restart: unless-stopped
+
+volumes:
+  mssqldata:
+  teams_pgdata:
+  players_data:
+  redis_data:

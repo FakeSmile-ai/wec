@@ -1,0 +1,29 @@
+.dialog-content {
+  display: grid;
+  gap: 12px;
+  min-width: 520px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.grow {
+  width: 100%;
+}
+
+.swap {
+  margin-top: 2px;
+}
+
+.mins {
+  max-width: 240px;
+}
+
+.hint {
+  color: #b00020;
+  font-size: 12px;
+}

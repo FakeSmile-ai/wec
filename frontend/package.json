@@ -1,0 +1,67 @@
+{
+  "name": "scoreboard",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve --proxy-config proxy.conf.json --open",
+    "build": "ng build --configuration production",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "serve:ssr:scoreboard": "node dist/scoreboard/server/server.mjs",
+    "clean": "rimraf node_modules dist package-lock.json"
+  },
+  "prettier": {
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "parser": "angular"
+        }
+      }
+    ]
+  },
+  "dependencies": {
+    "@angular/animations": "20.3.6",
+    "@angular/cdk": "20.2.9",
+    "@angular/common": "20.3.6",
+    "@angular/compiler": "20.3.6",
+    "@angular/core": "20.3.6",
+    "@angular/forms": "20.3.6",
+    "@angular/material": "20.2.9",
+    "@angular/platform-browser": "20.3.6",
+    "@angular/platform-server": "20.3.6",
+    "@angular/router": "20.3.6",
+    "@angular/ssr": "20.3.6",
+    "@microsoft/signalr": "9.0.6",
+    "express": "5.1.0",
+    "rxjs": "7.8.2",
+    "sweetalert2": "11.22.4",
+    "tslib": "2.6.2",
+    "zone.js": "0.15.1"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "20.3.6",
+    "@angular/cli": "20.3.6",
+    "@angular/compiler-cli": "20.3.6",
+    "@types/body-parser": "1.19.6",
+    "@types/connect": "3.4.38",
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.3",
+    "@types/http-errors": "2.0.5",
+    "@types/jasmine": "5.1.0",
+    "@types/mime": "3.0.4",
+    "@types/node": "20.19.22",
+    "@types/retry": "0.12.5",
+    "@types/serve-static": "1.15.9",
+    "@types/ws": "8.18.1",
+    "jasmine-core": "5.8.0",
+    "karma": "6.4.0",
+    "karma-chrome-launcher": "3.2.0",
+    "karma-coverage": "2.2.0",
+    "karma-jasmine": "5.1.0",
+    "karma-jasmine-html-reporter": "2.1.0",
+    "rimraf": "6.0.1",
+    "typescript": "5.8.3"
+  }
+}

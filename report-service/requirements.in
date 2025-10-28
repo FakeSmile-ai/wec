@@ -1,0 +1,8 @@
+# Solo dependencias base; sin app
+fastapi
+uvicorn
+httpx
+reportlab
+redis
+python-jose
+python-dotenv

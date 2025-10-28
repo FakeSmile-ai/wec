@@ -1,0 +1,148 @@
+/* ===================== TEMA "ESTILOS" FORM – SOLO ESTE COMPONENTE ===================== */
+:host{
+  /* Paleta local */
+  --header-grad-start: #0c0b53;
+  --header-grad-end:   #1b073f;
+  --accent:   #9b57ff;
+  --accent-2: #8b5cf6;
+  --text-on-dark: #eef2ff;
+  --text-muted:   rgba(226,232,240,.75);
+  --card-bg: rgba(13,18,34,.82);
+  --border: rgba(148,163,184,.22);
+  --glow: rgba(129,140,248,.60);
+
+  display:block;
+  min-height: 100vh;                /* ✅ cubre todo el viewport (adiós franja blanca) */
+  color: var(--text-on-dark);
+
+  /* Fondo cinematográfico/bokeh */
+  background:
+    radial-gradient(1100px 520px at 20% -10%, rgba(99,102,241,.28), transparent 55%),
+    radial-gradient(900px 520px at 80% 0%, rgba(139,92,246,.22), transparent 60%),
+    radial-gradient(700px 500px at 10% 85%, rgba(255,90,31,.08), transparent 60%),
+    radial-gradient(600px 400px at 90% 70%, rgba(236,72,153,.06), transparent 60%),
+    #0b1120;
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", system-ui, -apple-system, sans-serif;
+}
+
+/* ===== HEADER degradado con glow sutil */
+.page-header{
+  position: sticky; top: 0; z-index: 100;
+  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
+  box-shadow: 0 10px 22px rgba(0,0,0,.22);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.header-inner{
+  max-width: 1100px; margin: 0 auto;
+  padding: 18px 16px;
+  display:grid; grid-template-columns: 1fr auto;
+  gap:16px; align-items:center;
+}
+.title{
+  margin:0; font-weight:800;
+  letter-spacing:.12em; text-transform:uppercase;
+  text-shadow: 0 1px 0 rgba(0,0,0,.4);
+}
+
+/* Botonera pill/btn-group */
+.actions{ display:flex; align-items:center; gap:10px; }
+.actions .pill, .actions .link{
+  display:inline-flex; align-items:center; gap:8px;
+  height:36px; padding:6px 14px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.25);
+  color:#eef2ff; text-decoration:none;
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  backdrop-filter: blur(4px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 22px rgba(2,6,23,.32);
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.actions .pill:hover, .actions .link:hover,
+.actions .pill:focus-visible, .actions .link:focus-visible{
+  transform: translateY(-1px);
+  border-color: rgba(255,255,255,.5);
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  outline:none;
+}
+.actions .is-active{ border-color: rgba(255,255,255,.45); }
+.actions .primary{
+  background: linear-gradient(135deg, rgba(155,87,255,.9), rgba(99,102,241,.85));
+  border-color: transparent; color:#fff;
+  box-shadow: 0 16px 40px rgba(155,87,255,.35);
+}
+.actions .logout{
+  background: linear-gradient(135deg, rgba(139,92,246,.9), rgba(99,102,241,.85));
+  border-color: transparent; color:#fff;
+}
+.actions .link{ background: transparent; border-style:dashed; }
+
+/* Línea luminosa debajo del header (como en tu mock) */
+.page-header::after{
+  content:""; display:block; height:2px; border-radius:999px;
+  margin: 0 auto 6px; max-width: 1100px;
+  background: linear-gradient(90deg, transparent, rgba(99,102,241,.85), rgba(139,92,246,.75), transparent);
+  box-shadow: 0 0 24px var(--glow), 0 0 40px rgba(99,102,241,.35);
+  opacity:.85;
+}
+
+/* ===== CONTENIDO */
+.page-container{
+  max-width:1100px; margin: 18px auto;
+  padding: 0 16px 56px;          /* ✅ extra padding bottom para que la sombra no toque el borde */
+}
+
+/* Card glass */
+.surface{
+  background: linear-gradient(180deg, var(--card-bg), rgba(11,17,32,.74));
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 28px 90px rgba(2,6,23,.55);  /* sombra oscura (no blanca) */
+  backdrop-filter: blur(6px);
+}
+
+/* Grid del formulario */
+.form-grid{ display:grid; grid-template-columns:1fr; gap:16px; }
+.full{ width:100%; }
+
+/* ===== Inputs Material (dark/glass) ===== */
+:host ::ng-deep .mat-mdc-text-field-wrapper{
+  background: rgba(255,255,255,.06);
+  border-radius: 12px;
+}
+:host ::ng-deep .mdc-text-field__input{ color:#eef2ff !important; }
+:host ::ng-deep .mdc-text-field__input::placeholder{ color: rgba(226,232,240,.65) !important; }
+:host ::ng-deep .mdc-notched-outline__leading,
+:host ::ng-deep .mdc-notched-outline__notch,
+:host ::ng-deep .mdc-notched-outline__trailing{ border-color: rgba(148,163,184,.28) !important; }
+:host ::ng-deep .mdc-text-field--focused .mdc-notched-outline__leading,
+:host ::ng-deep .mdc-text-field--focused .mdc-notched-outline__notch,
+:host ::ng-deep .mdc-notched-outline__trailing{ border-color: rgba(129,140,248,.66) !important; }
+
+/* Select dark */
+:host ::ng-deep .mat-mdc-select-value{ color:#eef2ff !important; }
+
+/* ===== Acciones del formulario ===== */
+.actions-row{
+  display:flex; gap:12px; margin-top:12px; flex-wrap:wrap;
+}
+.actions-row .pill{
+  border-radius:999px; padding:10px 18px;
+  border:1px solid rgba(148,163,184,.26);
+  background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.04));
+  color:#eef2ff;
+  box-shadow: 0 10px 26px rgba(2,6,23,.34), inset 0 1px 0 rgba(255,255,255,.08);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.actions-row .pill:hover{ transform: translateY(-1px); box-shadow: 0 18px 42px rgba(2,6,23,.44); }
+.actions-row .primary{
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent; color:#fff;
+  box-shadow: 0 16px 40px rgba(155,87,255,.34);
+}
+
+/* ===== Responsive ===== */
+@media (min-width: 720px){
+  .form-grid{ grid-template-columns: repeat(2, 1fr); }
+  mat-form-field.full:nth-of-type(3){ grid-column:1 / -1; }  /* Equipo a ancho completo */
+  .actions-row{ grid-column:1 / -1; }
+}

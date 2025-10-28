@@ -1,0 +1,234 @@
+<div class="tournaments-page">
+  <div class="status-banner" *ngIf="loading()">Cargando torneos...</div>
+  <div class="status-banner status-banner--error" *ngIf="!loading() && error()">{{ error() }}</div>
+
+  <header class="hero" *ngIf="selectedTournament() as tournament">
+    <div class="hero-icon" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M17.5 3H18a3 3 0 0 1 3 3v1.2a4.8 4.8 0 0 1-3.45 4.6A7 7 0 0 1 13 16.4V19h1.5a1.5 1.5 0 0 1 0 3h-5a1.5 1.5 0 0 1 0-3H11v-2.6a7 7 0 0 1-4.55-4.6A4.8 4.8 0 0 1 3 7.2V6a3 3 0 0 1 3-3h.5V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1zm-11 2H6a1 1 0 0 0-1 1v1.2a2.8 2.8 0 0 0 1.88 2.65 7 7 0 0 1 .38-4.85zm12 0h-.38a7 7 0 0 1 .38 4.85A2.8 2.8 0 0 0 19 7.2V6a1 1 0 0 0-1-1z"
+          fill="currentColor"
+        />
+      </svg>
+    </div>
+    <h1>{{ tournament.heroTitle }}</h1>
+    <p class="hero-subtitle">{{ tournament.description }}</p>
+    <div class="hero-meta">
+      <span>{{ tournament.season }}</span>
+      <span aria-hidden="true">•</span>
+      <span>{{ tournament.location }}</span>
+      <span aria-hidden="true">•</span>
+      <span>{{ tournament.scheduleLabel }}</span>
+    </div>
+  </header>
+
+  <section class="tournament-switcher" *ngIf="tournaments().length">
+    <button
+      type="button"
+      class="switch-card"
+      *ngFor="let item of tournaments(); trackBy: trackByTournament"
+      [class.is-active]="selectedTournament()?.id === item.id"
+      (click)="selectTournament(item.id)"
+    >
+      <div class="switch-card__title">{{ item.name }}</div>
+      <div class="switch-card__meta">
+        <span>{{ item.season }}</span>
+        <span aria-hidden="true">•</span>
+        <span>{{ item.scheduleLabel }}</span>
+      </div>
+      <div class="switch-card__progress">
+        <span>{{ percent(item.progress) }}% completado</span>
+        <div class="progress-bar">
+          <span class="progress-fill" [style.width.%]="item.progress * 100"></span>
+        </div>
+      </div>
+    </button>
+  </section>
+
+  <nav class="hero-actions">
+    <a routerLink="/admin">Dashboard</a>
+    <a routerLink="/control">Panel de control</a>
+  </nav>
+
+  <ng-container *ngIf="selectedTournament() as bracket">
+    <section class="bracket-grid">
+      <ng-container *ngIf="bracket.groups[0] as groupA">
+        <div class="group-column group-left" [style.--group-color]="groupA.color ?? 'rgba(99,102,241,0.2)'">
+          <header class="group-header">
+            <h2>{{ groupA.name }}</h2>
+            <span class="group-summary">{{ bracket.summary }}</span>
+          </header>
+
+          <section class="stage">
+            <h3>Enfrentamientos iniciales</h3>
+            <div class="match-list">
+              <app-tournament-match-card
+                *ngFor="let match of groupA.matches; trackBy: trackByMatch"
+                [match]="match"
+                [highlightTeamId]="activeTeamId()"
+                (teamFocus)="focusTeam($event)"
+              ></app-tournament-match-card>
+            </div>
+          </section>
+
+          <section class="stage qualifiers">
+            <h3>Quarter-Finals</h3>
+            <div class="qualifiers-list" *ngIf="groupA.qualifiers.length; else pendingA">
+              <button
+                type="button"
+                class="qualifier-chip"
+                *ngFor="let team of groupA.qualifiers; trackBy: trackByTeam"
+                [class.is-active]="team.id === activeTeamId()"
+                (mouseenter)="focusTeam(team.id)"
+                (focus)="focusTeam(team.id)"
+                (click)="focusTeam(team.id)"
+              >
+                <span class="dot" [style.background-image]="team.palette ? 'linear-gradient(135deg,' + team.palette.primary + ',' + team.palette.secondary + ')' : 'none'"></span>
+                <span class="name">{{ team.displayName }}</span>
+              </button>
+            </div>
+            <ng-template #pendingA>
+              <p class="qualifiers-empty">Esperando clasificados...</p>
+            </ng-template>
+          </section>
+
+          <section class="stage semi-stage">
+            <h3>Semi-Finals</h3>
+            <app-tournament-match-card
+              *ngIf="groupA.semiFinal as semiA"
+              [match]="semiA"
+              [highlightTeamId]="activeTeamId()"
+              (teamFocus)="focusTeam($event)"
+            ></app-tournament-match-card>
+          </section>
+        </div>
+      </ng-container>
+
+      <div class="final-column">
+        <div class="final-card">
+          <h2>Final</h2>
+          <app-tournament-match-card
+            *ngIf="bracket.final as finalMatch"
+            [match]="finalMatch"
+            [highlightTeamId]="activeTeamId()"
+            (teamFocus)="focusTeam($event)"
+          ></app-tournament-match-card>
+
+          <div class="winner-card" [class.has-winner]="!!bracket.winner">
+            <div class="winner-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path
+                  d="M17 3h3a2 2 0 0 1 2 2c0 3.3-1.8 6-6 6-.21.73-.54 1.41-.96 2H17a1 1 0 0 1 1 1v1c0 1.1-.9 2-2 2h-1.27A2.99 2.99 0 0 1 16 19.5c0 .74-.3 1.45-.83 1.98A2.8 2.8 0 0 1 13.33 23H10.7a2.8 2.8 0 0 1-1.84-.67A2.83 2.83 0 0 1 8 19.5c0-.78.3-1.5.83-2.05H7a2 2 0 0 1-2-2v-1a1 1 0 0 1 1-1h1.96c-.42-.59-.75-1.27-.96-2-4.2 0-6-2.7-6-6a2 2 0 0 1 2-2h3V2a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"
+                  fill="currentColor"
+                />
+              </svg>
+            </div>
+            <span class="winner-label">WINNER</span>
+            <p class="winner-name">{{ bracket.winner?.displayName ?? 'Por definir' }}</p>
+          </div>
+        </div>
+
+        <div class="final-meta">
+          <div class="meta-item">
+            <span class="meta-label">Sede</span>
+            <span class="meta-value">{{ bracket.venue }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Actualización</span>
+            <span class="meta-value">{{ bracket.updatedLabel }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Progreso</span>
+            <span class="meta-value">{{ percent(bracket.progress) }}%</span>
+          </div>
+        </div>
+      </div>
+
+      <ng-container *ngIf="bracket.groups[1] as groupB">
+        <div class="group-column group-right" [style.--group-color]="groupB.color ?? 'rgba(99,102,241,0.2)'">
+          <header class="group-header">
+            <h2>{{ groupB.name }}</h2>
+            <span class="group-summary">{{ bracket.summary }}</span>
+          </header>
+
+          <section class="stage">
+            <h3>Enfrentamientos iniciales</h3>
+            <div class="match-list">
+              <app-tournament-match-card
+                *ngFor="let match of groupB.matches; trackBy: trackByMatch"
+                [match]="match"
+                [highlightTeamId]="activeTeamId()"
+                (teamFocus)="focusTeam($event)"
+              ></app-tournament-match-card>
+            </div>
+          </section>
+
+          <section class="stage qualifiers">
+            <h3>Quarter-Finals</h3>
+            <div class="qualifiers-list" *ngIf="groupB.qualifiers.length; else pendingB">
+              <button
+                type="button"
+                class="qualifier-chip"
+                *ngFor="let team of groupB.qualifiers; trackBy: trackByTeam"
+                [class.is-active]="team.id === activeTeamId()"
+                (mouseenter)="focusTeam(team.id)"
+                (focus)="focusTeam(team.id)"
+                (click)="focusTeam(team.id)"
+              >
+                <span class="dot" [style.background-image]="team.palette ? 'linear-gradient(135deg,' + team.palette.primary + ',' + team.palette.secondary + ')' : 'none'"></span>
+                <span class="name">{{ team.displayName }}</span>
+              </button>
+            </div>
+            <ng-template #pendingB>
+              <p class="qualifiers-empty">Esperando clasificados...</p>
+            </ng-template>
+          </section>
+
+          <section class="stage semi-stage">
+            <h3>Semi-Finals</h3>
+            <app-tournament-match-card
+              *ngIf="groupB.semiFinal as semiB"
+              [match]="semiB"
+              [highlightTeamId]="activeTeamId()"
+              (teamFocus)="focusTeam($event)"
+            ></app-tournament-match-card>
+          </section>
+        </div>
+      </ng-container>
+    </section>
+
+    <section class="team-detail" *ngIf="activeTeam() as team" [style.--team-accent]="teamAccent(team)">
+      <div class="team-detail-card">
+        <header>
+          <h3>{{ team.name }}</h3>
+          <p>{{ team.narrative }}</p>
+        </header>
+        <div class="team-detail-grid">
+          <div class="team-detail-meta">
+            <span *ngIf="team.city"><strong>Ciudad:</strong> {{ team.city }}</span>
+            <span *ngIf="team.coach"><strong>Coach:</strong> {{ team.coach }}</span>
+            <span *ngIf="team.record"><strong>Récord:</strong> {{ team.record }}</span>
+            <span *ngIf="team.streak"><strong>Racha:</strong> {{ team.streak }}</span>
+          </div>
+          <div class="team-detail-stats">
+            <div class="stat" *ngFor="let stat of team.stats">
+              <span class="stat-label">{{ stat.label }}</span>
+              <span class="stat-value">{{ stat.value }}</span>
+            </div>
+          </div>
+          <div class="team-detail-players">
+            <h4>Jugadores destacados</h4>
+            <ul>
+              <li *ngFor="let player of team.players">{{ player }}</li>
+            </ul>
+          </div>
+        </div>
+        <button type="button" class="close-detail" (click)="clearTeam()">Ocultar panel</button>
+      </div>
+    </section>
+  </ng-container>
+
+  <footer class="tournaments-footer">
+    <span>{{ selectedTournament()?.domain || 'www.tournament.com' }}</span>
+  </footer>
+</div>

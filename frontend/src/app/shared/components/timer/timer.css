@@ -1,0 +1,11 @@
+.timer {
+  text-align: center;
+  font-weight: 900;
+  line-height: 1;
+  font-size: clamp(72px, 10vw, 140px);
+  letter-spacing: 0.08em;
+}
+.colon {
+  padding: 0 0.1em;
+  display: inline-block;
+}

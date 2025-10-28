@@ -1,0 +1,33 @@
+{
+  "/api": {
+    "target": "http://localhost:5000",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api/teams": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api/players": {
+    "target": "http://localhost:3001",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api/tournaments": {
+    "target": "http://localhost:5003",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api/reports": {
+    "target": "http://localhost:5004",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/hubs": {
+    "target": "http://localhost:5000",
+    "ws": true,
+    "secure": false,
+    "changeOrigin": true
+  }
+}

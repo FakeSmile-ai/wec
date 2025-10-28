@@ -1,0 +1,12 @@
+bin
+obj
+.vscode
+.git
+.gitignore
+*.user
+*.swp
+*.suo
+*.psess
+*.vsp
+*.pidb
+*.userprefs

@@ -1,0 +1,83 @@
+<!-- Header con gradiente oscuro y acciones -->
+<header class="page-header">
+  <div class="title-wrap">
+    <h1 class="title">{{ isEdit ? 'Editar Equipo' : 'Nuevo Equipo' }}</h1>
+    <p class="subtitle">Completa la información del equipo</p>
+  </div>
+
+  <div class="header-actions">
+    <a mat-stroked-button class="pill pill-ghost" routerLink="/tournaments">
+      <mat-icon>emoji_events</mat-icon>
+      Torneos
+    </a>
+
+    <a mat-stroked-button class="pill pill-ghost" routerLink="/players">
+      <mat-icon>groups</mat-icon>
+      Jugadores
+    </a>
+
+    <a mat-stroked-button class="pill pill-ghost" routerLink="/teams">
+      <mat-icon>arrow_back</mat-icon>
+      Volver
+    </a>
+
+    <span class="divider"></span>
+
+    <a mat-button class="pill pill-link" routerLink="/admin">Admin</a>
+    <button mat-button class="pill pill-link" (click)="logout()">Logout</button>
+  </div>
+</header>
+
+<!-- Contenido -->
+<section class="page-content">
+  <mat-card class="panel mat-elevation-z4">
+    <form (ngSubmit)="save()" #teamForm="ngForm" class="form-grid">
+
+      <!-- Nombre (requerido) -->
+      <mat-form-field class="full" appearance="outline">
+        <mat-label>Nombre</mat-label>
+        <input
+          matInput
+          [(ngModel)]="team.name"
+          name="name"
+          required
+          placeholder="Ej. Warriors" />
+        <mat-hint>Nombre visible del equipo</mat-hint>
+      </mat-form-field>
+
+      <!-- Entrenador -->
+      <mat-form-field appearance="outline">
+        <mat-label>Entrenador</mat-label>
+        <input
+          matInput
+          [(ngModel)]="team.coach"
+          name="coach"
+          placeholder="Ej. Michael López" />
+        <mat-hint>Nombre del entrenador principal</mat-hint>
+      </mat-form-field>
+
+      <!-- Ciudad -->
+      <mat-form-field appearance="outline">
+        <mat-label>Ciudad</mat-label>
+        <input
+          matInput
+          [(ngModel)]="team.city"
+          name="city"
+          placeholder="Ej. Guatemala" />
+      </mat-form-field>
+
+      <!-- Acciones -->
+      <div class="actions">
+        <button mat-flat-button color="primary" class="pill pill-primary" type="submit" [disabled]="teamForm.invalid">
+          <mat-icon>check</mat-icon>
+          {{ isEdit ? 'Actualizar' : 'Guardar' }}
+        </button>
+
+        <a mat-stroked-button class="pill pill-ghost" routerLink="/teams">
+          <mat-icon>close</mat-icon>
+          Cancelar
+        </a>
+      </div>
+    </form>
+  </mat-card>
+</section>

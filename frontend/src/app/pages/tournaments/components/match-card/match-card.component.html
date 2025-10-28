@@ -1,0 +1,71 @@
+<div class="match-card" [class.finished]="match.status === 'finished'">
+  <div class="match-card__header">
+    <span class="match-card__label">{{ match.label }}</span>
+    <span class="match-card__status" [ngClass]="statusClass()">
+      {{ match.statusLabel }}
+    </span>
+  </div>
+
+  <div class="match-card__meta">
+    <span class="match-card__time">{{ match.scheduleLabel }}</span>
+    <span class="match-card__venue" *ngIf="match.venue">{{ match.venue }}</span>
+  </div>
+
+  <div class="match-card__teams">
+    <!-- TEAM A -->
+    <button
+      type="button"
+      class="team"
+      [class.is-placeholder]="match.teamA.isPlaceholder"
+      [class.is-winner]="isWinner(match.teamA)"
+      [class.is-highlighted]="isHighlighted(match.teamA)"
+      (mouseenter)="handleFocus(match.teamA)"
+      (focus)="handleFocus(match.teamA)"
+      (click)="handleFocus(match.teamA)"
+    >
+      <div class="team__info">
+        <span class="team__seed" *ngIf="match.teamA.seed as seed">#{{ seed }}</span>
+        <div class="team__labels">
+          <span class="team__name">{{ match.teamA.displayName }}</span>
+          <span class="team__meta" *ngIf="!match.teamA.isPlaceholder && match.teamA.record">
+            {{ match.teamA.record }}
+          </span>
+          <span class="team__meta" *ngIf="match.teamA.isPlaceholder && match.teamA.originLabel">
+            {{ match.teamA.originLabel }}
+          </span>
+        </div>
+      </div>
+      <span class="team__score">{{ displayScore(match.teamA) }}</span>
+    </button>
+
+    <!-- TEAM B -->
+    <button
+      type="button"
+      class="team"
+      [class.is-placeholder]="match.teamB.isPlaceholder"
+      [class.is-winner]="isWinner(match.teamB)"
+      [class.is-highlighted]="isHighlighted(match.teamB)"
+      (mouseenter)="handleFocus(match.teamB)"
+      (focus)="handleFocus(match.teamB)"
+      (click)="handleFocus(match.teamB)"
+    >
+      <div class="team__info">
+        <span class="team__seed" *ngIf="match.teamB.seed as seed">#{{ seed }}</span>
+        <div class="team__labels">
+          <span class="team__name">{{ match.teamB.displayName }}</span>
+          <span class="team__meta" *ngIf="!match.teamB.isPlaceholder && match.teamB.record">
+            {{ match.teamB.record }}
+          </span>
+          <span class="team__meta" *ngIf="match.teamB.isPlaceholder && match.teamB.originLabel">
+            {{ match.teamB.originLabel }}
+          </span>
+        </div>
+      </div>
+      <span class="team__score">{{ displayScore(match.teamB) }}</span>
+    </button>
+  </div>
+
+  <div class="match-card__footer" *ngIf="match.broadcast">
+    <span class="broadcast">Transmisión: {{ match.broadcast }}</span>
+  </div>
+</div>

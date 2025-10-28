@@ -1,0 +1,31 @@
+<h2 class="title">Tabla de posiciones</h2>
+
+<div class="table-wrap" *ngIf="rows?.length; else empty">
+  <table class="standings">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Equipo</th>
+        <th>Victorias</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let r of rows; let i = index">
+        <td class="rank">{{ i + 1 }}</td>
+        <td class="team">
+          <span class="dot" *ngIf="r.color" [style.background]="r.color"></span>
+          {{ r.name }}
+        </td>
+        <td class="wins">{{ r.wins }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<ng-template #empty>
+  <div class="empty">Sin equipos registrados.</div>
+</ng-template>
+
+<div class="actions">
+  <button class="btn" mat-button (click)="close()">Cerrar</button>
+</div>

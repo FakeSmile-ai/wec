@@ -1,0 +1,17 @@
+.admin-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px;
+  justify-content: center;
+}
+
+.admin-menu button {
+  font-weight: bold;
+  border-radius: 8px;
+  transition: transform 0.15s ease;
+}
+
+.admin-menu button:hover {
+  transform: translateY(-2px);
+}

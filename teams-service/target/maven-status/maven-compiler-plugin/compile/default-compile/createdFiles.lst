@@ -1,0 +1,11 @@
+com\scoreboard\teams\controller\TeamController.class
+com\scoreboard\teams\dto\PlayerDto$PlayerDtoBuilder.class
+com\scoreboard\teams\App.class
+com\scoreboard\teams\dto\PlayerDto.class
+com\scoreboard\teams\model\Team$TeamBuilder.class
+com\scoreboard\teams\TeamsServiceApplication.class
+com\scoreboard\teams\client\PlayersClient$1.class
+com\scoreboard\teams\client\PlayersClient.class
+com\scoreboard\teams\repository\TeamRepository.class
+com\scoreboard\teams\service\TeamService.class
+com\scoreboard\teams\model\Team.class

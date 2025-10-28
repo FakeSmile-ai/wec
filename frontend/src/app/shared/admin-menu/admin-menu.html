@@ -1,0 +1,9 @@
+<!-- Menú de administrador reactivo -->
+<div class="admin-menu" *ngIf="user$ | async as user">
+  <ng-container *ngIf="isAdmin(user)">
+    <button mat-raised-button color="primary" (click)="goTo('/players')">👥 Jugadores</button>
+    <button mat-raised-button color="accent" (click)="goTo('/teams')">🏀 Equipos</button>
+    <button mat-raised-button color="warn" (click)="goTo('/tournaments')">🏆 Torneos</button>
+    <button mat-stroked-button color="basic" (click)="logout()">🔒 Logout</button>
+  </ng-container>
+</div>

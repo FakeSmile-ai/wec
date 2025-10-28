@@ -1,0 +1,52 @@
+/* El contenedor del topbar no afecta el layout del tablero */
+:host {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;        /* por encima del tablero */
+  display: flex;
+  gap: 12px;
+  background: transparent;
+  pointer-events: auto;
+}
+
+/* Botones tipo chip (si ya lo tenías, mantenlo) */
+.topbar-chip {
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 600;
+  border: 1px solid #2a2a2a;
+  background: #121212;
+  color: #e9eef5;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset;
+  transition: transform .08s ease, box-shadow .15s ease, background .15s ease;
+  cursor: pointer;
+}
+
+.topbar-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.06) inset;
+}
+
+/* Ícono opcional delante del texto */
+.topbar-chip .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+  translate: 0 1px;
+  background: #6ea8fe; /* puedes variar por botón */
+}
+
+@media (max-width: 768px) {
+  :host {
+    top: 10px;
+    right: 10px;
+    gap: 8px;
+  }
+  .topbar-chip {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}

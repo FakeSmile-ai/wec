@@ -1,0 +1,52 @@
+<div class="scoreboard-page">
+  <!-- HUD flotante -->
+  <div class="hud-bar" aria-label="Scoreboard HUD">
+    <nav class="hud-left">
+      <a *ngIf="isAdmin" class="pill" routerLink="/players">👥 Jugadores</a>
+      <a *ngIf="isAdmin" class="pill" routerLink="/teams">🏀 Equipos</a>
+      <a *ngIf="isAdmin" class="pill" routerLink="/tournaments">🏆 Torneos</a>
+    </nav>
+
+    <nav class="hud-right">
+      <a *ngIf="isAdmin" class="pill" routerLink="/admin">⚙️ Admin</a>
+      <a class="pill" [routerLink]="['/control', matchId()]">🎛️ Control</a>
+      <button class="pill primary" (click)="logout()">↩️ Logout</button>
+    </nav>
+  </div>
+
+  <!-- TABLERO -->
+  <div class="board">
+    <!-- TOP -->
+    <div class="top">
+      <app-fouls-panel side="home" class="fouls left"></app-fouls-panel>
+
+      <div class="timer-wrap">
+        <div class="timer-bezel">
+          <app-timer></app-timer>
+        </div>
+      </div>
+
+      <app-fouls-panel side="away" class="fouls right"></app-fouls-panel>
+    </div>
+
+    <!-- MIDDLE -->
+    <div class="middle">
+      <div class="score-box left">
+        <app-team-panel [label]="homeName" [score]="realtime.score().home"></app-team-panel>
+      </div>
+
+      <div class="center">
+        <div class="pos">
+          <span class="arrow left active">◄</span>
+          <span class="pos-text">POS</span>
+          <span class="arrow right">►</span>
+        </div>
+        <app-quarter-indicator></app-quarter-indicator>
+      </div>
+
+      <div class="score-box right">
+        <app-team-panel [label]="awayName" [score]="realtime.score().away"></app-team-panel>
+      </div>
+    </div>
+  </div>
+</div>

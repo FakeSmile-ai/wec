@@ -1,0 +1,74 @@
+<div class="p-6 max-w-4xl mx-auto space-y-6">
+  <h1 class="text-2xl font-bold">Reportes & Estadísticas</h1>
+
+  <p *ngIf="errorMsg()" class="text-red-600">{{ errorMsg() }}</p>
+
+  <!-- Tabla de Posiciones -->
+  <section class="border rounded-xl p-4">
+    <h2 class="font-semibold mb-2">Tabla de Posiciones</h2>
+    <button class="btn" (click)="downloadStandings()">Descargar standings.pdf</button>
+  </section>
+
+  <!-- Estadísticas (resumen) -->
+  <section class="border rounded-xl p-4">
+    <h2 class="font-semibold mb-2">Estadística</h2>
+    <button class="btn" (click)="downloadStatsSummary()">Descargar Estadísticas.pdf</button>
+  </section>
+
+  <!-- Todos los Jugadores -->
+  <section class="border rounded-xl p-4">
+    <h2 class="font-semibold mb-2">Jugadores Registrados</h2>
+    <button class="btn" (click)="downloadAllPlayers()">Descargar players_all.pdf</button>
+  </section>
+
+  <!-- Equipos -->
+  <section class="border rounded-xl p-4">
+    <h2 class="font-semibold mb-2">Equipos Registrados</h2>
+    <button class="btn" (click)="downloadTeams()">Descargar equipos.pdf</button>
+  </section>
+
+  <!-- Jugadores por Equipo -->
+  <section class="border rounded-xl p-4">
+    <h2 class="font-semibold mb-2">Jugadores por Equipo</h2>
+
+    <div class="flex gap-2 items-center">
+      <label>Equipo:</label>
+      <select [disabled]="loadingTeams()" [(ngModel)]="teamId">
+        <option [ngValue]="null" disabled>-- selecciona --</option>
+        <option *ngFor="let t of teams()" [ngValue]="t.id">{{ t.name }}</option>
+      </select>
+
+      <button class="btn" (click)="downloadPlayersByTeam()">Descargar players.pdf</button>
+    </div>
+
+    <small *ngIf="loadingTeams()">Cargando equipos…</small>
+  </section>
+
+  <!-- Historial de Partidos -->
+  <section class="border rounded-xl p-4">
+    <h2 class="font-semibold mb-2">Historial de Partidos</h2>
+
+    <div class="flex gap-2 items-center">
+      <label>Desde:</label>
+      <input type="date" [(ngModel)]="from" />
+      <label>Hasta:</label>
+      <input type="date" [(ngModel)]="to" />
+      <button class="btn" (click)="downloadMatchesHistory()">Descargar history.pdf</button>
+    </div>
+  </section>
+
+  <!-- Roster por Partido -->
+  <section class="border rounded-xl p-4">
+    <h2 class="font-semibold mb-2">Roster por Partido</h2>
+
+    <div class="flex gap-2 items-center">
+      <label>Match ID:</label>
+      <input type="number" [(ngModel)]="matchId" placeholder="e.g. 4" />
+      <button class="btn" (click)="downloadMatchRoster()">Descargar roster.pdf</button>
+    </div>
+  </section>
+</div>
+
+<style>
+  .btn { padding: .5rem .9rem; border: 1px solid #ddd; border-radius: .5rem; }
+</style>
