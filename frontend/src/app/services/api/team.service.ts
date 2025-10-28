@@ -8,8 +8,7 @@ import { Team } from '../../models/team';
   providedIn: 'root'
 })
 export class TeamService {
-  // ✅ ahora apunta al endpoint correcto del backend
-  private apiUrl = 'http://localhost:8082/api/teams';
+  private apiUrl = '/api/teams';
 
   constructor(private http: HttpClient) {}
 

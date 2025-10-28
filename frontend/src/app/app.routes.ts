@@ -35,6 +35,15 @@ export const routes: Routes = [
       ),
   },
 
+  {
+    path: 'programar',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('@app/pages/programar-partido/programar-partido.component').then(
+        m => m.ProgramarPartidoComponent
+      ),
+  },
+
   // --- Reports ---
   {
     path: 'admin/reports',

@@ -1,155 +1,109 @@
-<!-- ===== HERO SUPERIOR ===== -->
-<div class="cp-hero">
-  <div class="wrap">
-    <div class="crumbs">
-      <button class="pill ghost" (click)="goBack()">← Volver</button>
-      <span class="sep">/</span>
-      <span class="muted">Panel de control</span>
-    </div>
-
-    <h1>Control del Partido</h1>
-    <p class="sub">Gestiona el reloj, puntos, faltas y período en vivo.</p>
-
-    <div class="hero-actions">
-      <button class="pill" (click)="goScoreboard()">🎯 Ver Marcador</button>
-      <button class="pill" (click)="openPickMatch()">🎮 Elegir partido</button>
-      <button class="pill warn" (click)="logout()">🔒 Cerrar sesión</button>
-      <button *ngIf="isAdmin" class="pill ghost" (click)="registerTeam()">📝 Registrar equipo</button>
-      <button *ngIf="isAdmin" class="pill ghost" (click)="showStandings()">🏆 Clasificación</button>
-    </div>
+<div class="control-shell" [class.loading]="loading()">
+  <div class="loading-overlay" *ngIf="loading()">
+    <div class="spinner"></div>
   </div>
-</div>
 
-<!-- ===== CONTENEDOR PRINCIPAL ===== -->
-<div class="cp-container">
+  <ng-container *ngIf="hasMatchSelected; else emptyState">
+    <section class="glass-panel">
+      <header class="panel-header">
+        <div class="title-block">
+          <span class="status-badge">{{ statusLabel() }}</span>
+          <h1>{{ homeName }} vs {{ awayName }}</h1>
+          <p class="match-date">{{ match()?.dateTime | date: 'EEEE d MMMM, HH:mm' }}</p>
+        </div>
+        <div class="header-actions">
+          <button class="ghost" (click)="chooseMatch()">
+            <mat-icon>sports</mat-icon>
+            Elegir partido
+          </button>
+          <button class="ghost" (click)="refresh()">
+            <mat-icon>refresh</mat-icon>
+            Refrescar
+          </button>
+        </div>
+      </header>
 
-  <!-- ===== CABECERA CON EQUIPOS Y RELOJ ===== -->
-  <section class="card head-card">
-    <div class="head-left">
-      <div class="teams-line">
-        <span class="team home">{{ homeName }}</span>
-        <span class="vs">vs</span>
-        <span class="team away">{{ awayName }}</span>
-      </div>
+      <section class="scoreboard">
+        <article class="team-card home">
+          <div class="team-header">
+            <mat-icon>home</mat-icon>
+            <h2>{{ homeName }}</h2>
+          </div>
+          <div class="score">{{ match()?.homeScore ?? 0 }}</div>
+          <div class="score-controls">
+            <button (click)="addPoints('home', 1)" [disabled]="pendingAction() || isFinished">+1</button>
+            <button (click)="addPoints('home', 2)" [disabled]="pendingAction() || isFinished">+2</button>
+            <button (click)="addPoints('home', 3)" [disabled]="pendingAction() || isFinished">+3</button>
+            <button (click)="addPoints('home', -1)" [disabled]="pendingAction() || isFinished">-1</button>
+          </div>
+          <div class="fouls">
+            <span>Faltas: {{ match()?.foulsHome ?? 0 }}</span>
+            <div class="foul-controls">
+              <button (click)="adjustFoul('home', 1)" [disabled]="pendingAction() || isFinished">+1</button>
+              <button (click)="adjustFoul('home', -1)" [disabled]="pendingAction() || isFinished">-1</button>
+            </div>
+          </div>
+        </article>
 
-      <div class="meta-line">
-        <span class="badge" [class.ok]="rt.timerRunning()" [class.err]="!rt.timerRunning()">
-          {{ rt.timerRunning() ? 'En juego' : 'En pausa' }}
-        </span>
-        <span class="dot"></span>
-        <span class="muted">Periodo:</span>
-        <span class="period">{{ rt.quarter() }}</span>
-        <span class="dot"></span>
-        <span class="muted">Estado:</span>
-        <span class="status">{{ status() }}</span>
-      </div>
-    </div>
+        <article class="team-card away">
+          <div class="team-header">
+            <mat-icon>flight_takeoff</mat-icon>
+            <h2>{{ awayName }}</h2>
+          </div>
+          <div class="score">{{ match()?.awayScore ?? 0 }}</div>
+          <div class="score-controls">
+            <button (click)="addPoints('away', 1)" [disabled]="pendingAction() || isFinished">+1</button>
+            <button (click)="addPoints('away', 2)" [disabled]="pendingAction() || isFinished">+2</button>
+            <button (click)="addPoints('away', 3)" [disabled]="pendingAction() || isFinished">+3</button>
+            <button (click)="addPoints('away', -1)" [disabled]="pendingAction() || isFinished">-1</button>
+          </div>
+          <div class="fouls">
+            <span>Faltas: {{ match()?.foulsAway ?? 0 }}</span>
+            <div class="foul-controls">
+              <button (click)="adjustFoul('away', 1)" [disabled]="pendingAction() || isFinished">+1</button>
+              <button (click)="adjustFoul('away', -1)" [disabled]="pendingAction() || isFinished">-1</button>
+            </div>
+          </div>
+        </article>
+      </section>
 
-    <div class="head-right">
-      <div class="clock">{{ clock() }}</div>
-      <div class="clock-sub">{{ rt.timeoutRunning() ? 'Tiempo muerto' : 'Periodo de tiempo' }}</div>
-    </div>
-  </section>
+      <section class="timer-panel">
+        <div class="timer-display" [class.running]="match()?.timerRunning">{{ timerDisplay() }}</div>
+        <div class="timer-actions">
+          <button (click)="controlTimer('start')" [disabled]="pendingAction() || isFinished">Iniciar</button>
+          <button (click)="controlTimer('pause')" [disabled]="pendingAction() || isFinished">Pausar</button>
+          <button (click)="controlTimer('resume')" [disabled]="pendingAction() || isFinished">Reanudar</button>
+          <button (click)="controlTimer('reset')" [disabled]="pendingAction() || isFinished">Reiniciar</button>
+        </div>
+      </section>
 
-  <!-- ===== BOTONES PRINCIPALES DE CONTROL ===== -->
-  <section class="card actions">
-    <button class="btn go" (click)="start()" [disabled]="rt.timerRunning() || readOnly()">Comenzar</button>
-    <button class="btn" (click)="resume()" [disabled]="rt.timerRunning() || readOnly()">Reanudar</button>
-    <button class="btn stop" (click)="stop()" [disabled]="readOnly()">Detener</button>
-    <button class="btn" (click)="timeout(30)" [disabled]="rt.timeoutRunning() || readOnly()">Tiempo muerto (0:30)</button>
-    <button class="btn" (click)="timeout(60)" [disabled]="rt.timeoutRunning() || readOnly()">Tiempo de espera (1:00)</button>
-    <button class="btn ghost" (click)="reset()" [disabled]="readOnly()">Reiniciar</button>
-  </section>
+      <section class="quarter-panel">
+        <div class="quarter-info">
+          <mat-icon>timelapse</mat-icon>
+          <span>Cuarto actual</span>
+          <strong>{{ quarter }}</strong>
+        </div>
+        <button class="accent" (click)="nextQuarter()" [disabled]="pendingAction() || isFinished">Siguiente cuarto</button>
+      </section>
 
-  <!-- ===== POSESIÓN Y PERÍODO ===== -->
-  <div class="grid-2">
-    <section class="card">
-      <div class="card-title">Posesión</div>
-      <div class="pos">
-        <button class="btn pos-btn" [class.active]="possession() === 'home'" (click)="posLeft()">◄ {{ homeName }}</button>
-        <button class="btn pos-none" (click)="posNone()">
-          {{ possession() === 'none' ? 'Ninguno' : (possession() === 'home' ? homeName : awayName) }}
+      <footer class="panel-footer">
+        <button class="danger" (click)="finishMatch()" [disabled]="pendingAction() || isFinished">
+          <mat-icon>flag</mat-icon>
+          Finalizar partido
         </button>
-        <button class="btn pos-btn" [class.active]="possession() === 'away'" (click)="posRight()">{{ awayName }} ►</button>
-      </div>
+      </footer>
     </section>
+  </ng-container>
 
-    <section class="card">
-      <div class="card-title">Periodo</div>
-      <div class="period">
-        <div class="period-box"><span class="num">{{ rt.quarter() }}</span></div>
-        <button class="btn pos" (click)="periodPlus()" [disabled]="readOnly()">Siguiente período</button>
-      </div>
+  <ng-template #emptyState>
+    <section class="empty-state glass-panel">
+      <mat-icon>emoji_events</mat-icon>
+      <h2>Selecciona un partido</h2>
+      <p>Programa un partido desde el panel de administración o elige uno existente para comenzar el control.</p>
+      <button class="accent" (click)="chooseMatch()">
+        <mat-icon>sports</mat-icon>
+        Elegir partido
+      </button>
     </section>
-  </div>
-
-  <!-- ===== EQUIPOS Y PUNTAJES ===== -->
-  <div class="grid-2">
-    <!-- EQUIPO LOCAL -->
-    <section class="card team">
-      <div class="name home">{{ homeName }}</div>
-      <div class="sub">PUNTAJE</div>
-
-      <div class="score-row">
-        <button class="btn neg" (click)="minus1(homeTeamId)" [disabled]="!canScore()">-1</button>
-        <div class="score-display">{{ homeScore() }}</div>
-        <button class="btn pos" (click)="add(homeTeamId, 1)" [disabled]="!canScore()">+1</button>
-      </div>
-
-      <div class="score-actions">
-        <button class="btn pos" (click)="add(homeTeamId, 3)" [disabled]="!canScore()">+3</button>
-        <button class="btn pos" (click)="add(homeTeamId, 2)" [disabled]="!canScore()">+2</button>
-      </div>
-
-      <div class="sub fouls-title">FALTAS</div>
-      <div class="fouls-row">
-        <button class="btn neg" (click)="foul(homeTeamId, -1)" [disabled]="readOnly()">-1</button>
-        <div class="fouls-display">{{ homeFouls() }}</div>
-        <button class="btn pos" (click)="foul(homeTeamId, 1)" [disabled]="readOnly()">+1</button>
-      </div>
-    </section>
-
-    <!-- EQUIPO VISITANTE -->
-    <section class="card team">
-      <div class="name away">{{ awayName }}</div>
-      <div class="sub">PUNTAJE</div>
-
-      <div class="score-row">
-        <button class="btn neg" (click)="minus1(awayTeamId)" [disabled]="!canScore()">-1</button>
-        <div class="score-display">{{ awayScore() }}</div>
-        <button class="btn pos" (click)="add(awayTeamId, 1)" [disabled]="!canScore()">+1</button>
-      </div>
-
-      <div class="score-actions">
-        <button class="btn pos" (click)="add(awayTeamId, 3)" [disabled]="!canScore()">+3</button>
-        <button class="btn pos" (click)="add(awayTeamId, 2)" [disabled]="!canScore()">+2</button>
-      </div>
-
-      <div class="sub fouls-title">FALTAS</div>
-      <div class="fouls-row">
-        <button class="btn neg" (click)="foul(awayTeamId, -1)" [disabled]="readOnly()">-1</button>
-        <div class="fouls-display">{{ awayFouls() }}</div>
-        <button class="btn pos" (click)="foul(awayTeamId, 1)" [disabled]="readOnly()">+1</button>
-      </div>
-    </section>
-  </div>
-
-  <!-- ===== HERRAMIENTAS Y ADMIN ===== -->
-  <section class="card tools">
-    <div class="card-title">Herramientas</div>
-
-    <div class="group">
-      <span class="title">Navegación</span>
-      <button class="pill" (click)="goBack()">← Volver</button>
-      <button class="pill" (click)="goScoreboard()">🎯 Ver Marcador</button>
-      <button class="pill" (click)="openPickMatch()">🎮 Elegir partido</button>
-    </div>
-
-    <div class="group" *ngIf="isAdmin">
-      <span class="title">Administración</span>
-      <button class="pill" (click)="registerTeam()">📝 Registrar equipo</button>
-      <button class="pill" (click)="showStandings()">🏆 Clasificación</button>
-    </div>
-  </section>
+  </ng-template>
 </div>
-
