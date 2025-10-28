@@ -12,6 +12,10 @@
           <p class="match-date">{{ match()?.dateTime | date: 'EEEE d MMMM, HH:mm' }}</p>
         </div>
         <div class="header-actions">
+          <button class="ghost" routerLink="/admin">
+            <mat-icon>dashboard</mat-icon>
+            Panel admin
+          </button>
           <button class="ghost" (click)="chooseMatch()">
             <mat-icon>sports</mat-icon>
             Elegir partido

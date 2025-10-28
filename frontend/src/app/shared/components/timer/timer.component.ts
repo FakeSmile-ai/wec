@@ -13,9 +13,10 @@ import { RealtimeService } from '@app/services/realtime.service';
 export class TimerComponent {
   rt = inject(RealtimeService);
   display = computed(() => {
-    const s = this.rt.timeoutRunning() ? this.rt.timeoutLeft() : this.rt.timeLeft();
-    const m = Math.floor(s / 60);
-    const r = s % 10
-    return `${m.toString().padStart(2,'0')}:${r.toString().padStart(2,'0')}`;
+    const total = this.rt.timeoutRunning() ? this.rt.timeoutLeft() : this.rt.timeLeft();
+    const safeTotal = Number.isFinite(total) && total >= 0 ? total : 0;
+    const minutes = Math.floor(safeTotal / 60);
+    const seconds = safeTotal % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   });
 }

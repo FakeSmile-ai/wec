@@ -196,6 +196,9 @@ export class RealtimeService {
 
     this.hub.on('timerUpdated', (t: { remainingSeconds: number }) => {
       this.timeLeft.set(t.remainingSeconds);
+      if (this.timerRunning()) {
+        this.endsAt = Date.now() + t.remainingSeconds * 1000;
+      }
     });
 
     this.hub.on('matchUpdated', (payload: { quarter?: number }) => {

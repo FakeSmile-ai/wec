@@ -1,21 +1,24 @@
+using System;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MatchesService.Data;
+using MatchesService.Hubs;
 using MatchesService.Repositories;
 using MatchesService.Services;
-using MatchesService.Hubs;
+using MatchesService.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ==========================================================
-// 🔧 CONFIGURACIÓN DE SERVICIOS
-// ==========================================================
+// Service configuration
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddControllers()
     .AddNewtonsoftJson(options =>
     {
-        options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+        options.SerializerSettings.ReferenceLoopHandling =
+            Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+        options.SerializerSettings.Converters.Add(new TimeOnlyJsonConverter());
     });
 
 builder.Services.AddCors(options =>
@@ -29,56 +32,59 @@ builder.Services.AddCors(options =>
               .AllowCredentials());
 });
 
-// DbContext (SQL Server)
 builder.Services.AddDbContext<MatchesDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// DI
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddScoped<IMatchService, MatchService>();
 builder.Services.Configure<TeamsServiceOptions>(builder.Configuration.GetSection("TeamsService"));
 builder.Services.AddHttpClient<ITeamClientService, TeamClientService>();
 
-// SignalR
 builder.Services.AddSignalR();
 
 var app = builder.Build();
 
-// ==========================================================
-// 🗃️ APLICAR MIGRACIONES EN ARRANQUE
-// ==========================================================
+// Apply migrations with simple retry so the container waits for SQL Server
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<MatchesDbContext>();
-    db.Database.Migrate(); // ⬅️ Aplica todas las migraciones pendientes
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    var db = services.GetRequiredService<MatchesDbContext>();
+
+    const int maxAttempts = 5;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            db.Database.Migrate();
+            break;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to apply migrations (attempt {Attempt}/{MaxAttempts})", attempt, maxAttempts);
+            if (attempt == maxAttempts)
+            {
+                throw;
+            }
+
+            var delaySeconds = Math.Pow(2, attempt);
+            Thread.Sleep(TimeSpan.FromSeconds(delaySeconds));
+        }
+    }
 }
 
-// ==========================================================
-// 🌐 MIDDLEWARES
-// ==========================================================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// En docker suele bastar con HTTP
-// app.UseHttpsRedirection();
-
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ==========================================================
-// 🔌 ENDPOINTS Y HUBS
-// ==========================================================
 app.MapControllers();
 app.MapHub<MatchHub>("/hub/matches");
-
-// Health (para curl rápido)
 app.MapGet("/health", () => Results.Ok("OK"));
 
-// ==========================================================
-// 🟢 RUN
-// ==========================================================
 app.Run();
