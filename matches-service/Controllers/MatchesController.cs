@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using MatchesService.Hubs;
 using MatchesService.Models.DTOs;
 using MatchesService.Services;
 
@@ -9,219 +7,76 @@ namespace MatchesService.Controllers;
 [ApiController]
 [Route("api/matches")]
 [Produces("application/json")]
-public class MatchesController(IMatchService matchService, IHubContext<ScoreHub> hub) : ControllerBase
+public class MatchesController : ControllerBase
 {
-    // ✅ Health
+    private readonly IMatchService _matchService;
+
+    public MatchesController(IMatchService matchService)
+    {
+        _matchService = matchService;
+    }
+
     [HttpGet("health")]
     public IActionResult Health() => Ok("OK");
 
-    // ✅ Listar partidos
     [HttpGet]
-    [HttpGet("list")]
-    public async Task<IActionResult> Listar(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        [FromQuery] string? status = null,
-        [FromQuery] int? teamId = null,
-        [FromQuery] DateTime? from = null,
-        [FromQuery] DateTime? to = null)
+    public async Task<IActionResult> GetMatches(CancellationToken cancellationToken)
     {
-        var result = await matchService.ListarAsync(page, pageSize, status, teamId, from, to);
-        return Ok(result);
+        var matches = await _matchService.GetMatchesAsync(cancellationToken);
+        return Ok(matches);
     }
 
-    // ✅ Obtener detalle
     [HttpGet("{id:int}")]
-    public async Task<IActionResult> Get(int id)
+    public async Task<IActionResult> GetMatch(int id, CancellationToken cancellationToken)
     {
-        var result = await matchService.GetMatchAsync(id);
-        if (result is null) return NotFound(new { error = "Partido no encontrado" });
-        return Ok(result);
+        var match = await _matchService.GetMatchAsync(id, cancellationToken);
+        return match is null ? NotFound(new { error = "Partido no encontrado" }) : Ok(match);
     }
 
-    // ✅ Programar partido
     [HttpPost("programar")]
-    public async Task<IActionResult> Programar([FromBody] ProgramarPartidoDto dto)
+    public async Task<IActionResult> ProgramMatch([FromBody] MatchProgramRequest request, CancellationToken cancellationToken)
     {
-        var result = await matchService.ProgramarAsync(dto);
-        return result.Success ? Ok(result.Data) : BadRequest(new { error = result.Error });
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        var result = await _matchService.ProgramMatchAsync(request, cancellationToken);
+        return result.Success ? Ok(result.Match) : BadRequest(new { error = result.Error });
     }
 
-    // ✅ Reprogramar
-    [HttpPut("{id:int}/reprogramar")]
-    public async Task<IActionResult> Reprogramar(int id, [FromBody] ReprogramarDto dto)
+    [HttpPost("{matchId:int}/score")]
+    public async Task<IActionResult> UpdateScore(int matchId, [FromBody] ScoreRequest request, CancellationToken cancellationToken)
     {
-        var result = await matchService.ReprogramarAsync(id, dto);
-        return result.Success ? Ok(result.Data) : BadRequest(new { error = result.Error });
+        var result = await _matchService.UpdateScoreAsync(matchId, request, cancellationToken);
+        return result.Success ? Ok(result.Match) : BadRequest(new { error = result.Error });
     }
 
-    // ✅ Próximos
-    [HttpGet("proximos")]
-    public async Task<IActionResult> Proximos()
+    [HttpPost("{matchId:int}/foul")]
+    public async Task<IActionResult> RegisterFoul(int matchId, [FromBody] FoulRequest request, CancellationToken cancellationToken)
     {
-        var result = await matchService.ProximosAsync();
-        return Ok(result);
+        var result = await _matchService.RegisterFoulAsync(matchId, request, cancellationToken);
+        return result.Success ? Ok(result.Match) : BadRequest(new { error = result.Error });
     }
 
-    // ✅ Rango
-    [HttpGet("rango")]
-    public async Task<IActionResult> Rango([FromQuery] DateTime from, [FromQuery] DateTime to)
+    [HttpPatch("{matchId:int}/timer")]
+    public async Task<IActionResult> UpdateTimer(int matchId, [FromBody] TimerRequest request, CancellationToken cancellationToken)
     {
-        var result = await matchService.RangoAsync(from, to);
-        return result.Success ? Ok(result.Data) : BadRequest(new { error = result.Error });
+        var result = await _matchService.UpdateTimerAsync(matchId, request, cancellationToken);
+        return result.Success ? Ok(result.Match) : BadRequest(new { error = result.Error });
     }
 
-    // ✅ Crear por nombres
-    [HttpPost("new")]
-    public async Task<IActionResult> NewGame([FromBody] NewGameDto dto)
+    [HttpPatch("{matchId:int}/quarter")]
+    public async Task<IActionResult> AdvanceQuarter(int matchId, CancellationToken cancellationToken)
     {
-        var result = await matchService.NewGameAsync(dto);
-        return result.Success ? Ok(result.Data) : BadRequest(new { error = result.Error });
+        var result = await _matchService.AdvanceQuarterAsync(matchId, cancellationToken);
+        return result.Success ? Ok(result.Match) : BadRequest(new { error = result.Error });
     }
 
-    // ✅ Crear por IDs de equipos
-    [HttpPost("new-by-teams")]
-    public async Task<IActionResult> NewByTeams([FromBody] NewGameByTeamsDto dto)
+    [HttpPatch("{matchId:int}/finish")]
+    public async Task<IActionResult> FinishMatch(int matchId, [FromBody] FinishMatchRequest request, CancellationToken cancellationToken)
     {
-        var result = await matchService.NewByTeamsAsync(dto);
-        return result.Success ? Ok(result.Data) : BadRequest(new { error = result.Error });
-    }
-
-    // ✅ Puntuaciones
-    [HttpPost("{id:int}/score")]
-    public async Task<IActionResult> AddScore(int id, [FromBody] AddScoreDto dto)
-    {
-        var result = await matchService.AddScoreAsync(id, dto);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("scoreUpdated", result.Data);
-        return Ok(result.Data);
-    }
-
-    [HttpPost("{id:int}/score/adjust")]
-    public async Task<IActionResult> AdjustScore(int id, [FromBody] AdjustScoreDto dto)
-    {
-        var result = await matchService.AdjustScoreAsync(id, dto);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("scoreUpdated", result.Data);
-        return Ok(result.Data);
-    }
-
-    // ✅ Faltas
-    [HttpPost("{id:int}/fouls")]
-    public async Task<IActionResult> AddFoul(int id, [FromBody] AddFoulDto dto)
-    {
-        var result = await matchService.AddFoulAsync(id, dto);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("foulsUpdated", result.Data);
-        return Ok(result.Data);
-    }
-
-    [HttpPost("{id:int}/fouls/adjust")]
-    public async Task<IActionResult> AdjustFoul(int id, [FromBody] AdjustFoulDto dto)
-    {
-        var result = await matchService.AdjustFoulAsync(id, dto);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("foulsUpdated", result.Data);
-        return Ok(result.Data);
-    }
-
-    // ✅ Temporizador
-    [HttpPost("{id:int}/timer/start")]
-    public async Task<IActionResult> StartTimer(int id, [FromBody] StartTimerDto? dto)
-    {
-        var result = await matchService.StartTimerAsync(id, dto);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("timerStarted", result.Data);
-        return Ok(result.Data);
-    }
-
-    [HttpPost("{id:int}/timer/pause")]
-    public async Task<IActionResult> PauseTimer(int id)
-    {
-        var result = await matchService.PauseTimerAsync(id);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("timerPaused", result.Data);
-        return Ok(result.Data);
-    }
-
-    [HttpPost("{id:int}/timer/resume")]
-    public async Task<IActionResult> ResumeTimer(int id)
-    {
-        var result = await matchService.ResumeTimerAsync(id);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("timerResumed", result.Data);
-        return Ok(result.Data);
-    }
-
-    [HttpPost("{id:int}/timer/reset")]
-    public async Task<IActionResult> ResetTimer(int id)
-    {
-        var result = await matchService.ResetTimerAsync(id);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("timerReset", result.Data);
-        return Ok(result.Data);
-    }
-
-    // ✅ Cuartos
-    [HttpPost("{id:int}/quarters/advance")]
-    public async Task<IActionResult> AdvanceQuarter(int id)
-    {
-        var result = await matchService.AdvanceQuarterAsync(id);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("quarterChanged", result.Data);
-        return Ok(result.Data);
-    }
-
-    [HttpPost("{id:int}/quarters/auto-advance")]
-    public async Task<IActionResult> AutoAdvanceQuarter(int id)
-    {
-        var result = await matchService.AutoAdvanceQuarterAsync(id);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("quarterChanged", result.Data);
-        if (result.GameEnded != null)
-            await hub.Clients.Group($"match-{id}").SendAsync("gameEnded", result.GameEnded);
-
-        return Ok(result.Data);
-    }
-
-    // ✅ Finalizar, cancelar, suspender
-    [HttpPost("{id:int}/finish")]
-    public async Task<IActionResult> Finish(int id, [FromBody] FinishMatchDto dto)
-    {
-        var result = await matchService.FinishAsync(id, dto);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("gameEnded", result.GameEnded);
-        return Ok(result.Data);
-    }
-
-    [HttpPost("{id:int}/cancel")]
-    public async Task<IActionResult> Cancel(int id)
-    {
-        var result = await matchService.CancelAsync(id);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("gameCanceled", result.Data);
-        return Ok(result.Data);
-    }
-
-    [HttpPost("{id:int}/suspend")]
-    public async Task<IActionResult> Suspend(int id)
-    {
-        var result = await matchService.SuspendAsync(id);
-        if (!result.Success) return BadRequest(new { error = result.Error });
-
-        await hub.Clients.Group($"match-{id}").SendAsync("gameSuspended", result.Data);
-        return Ok(result.Data);
+        var result = await _matchService.FinishMatchAsync(matchId, request, cancellationToken);
+        return result.Success ? Ok(result.Match) : BadRequest(new { error = result.Error });
     }
 }

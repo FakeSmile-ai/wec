@@ -1,0 +1,60 @@
+<section class="program-shell">
+  <div class="return">
+    <a routerLink="/admin" class="ghost-link">
+      <mat-icon>arrow_back</mat-icon>
+      Volver al panel
+    </a>
+  </div>
+
+  <div class="glass-card">
+    <header class="card-header">
+      <div class="icon-wrap"><mat-icon>calendar_month</mat-icon></div>
+      <div>
+        <h1>Programar partido</h1>
+        <p>Selecciona equipos, fecha y hora para crear un nuevo partido.</p>
+      </div>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="schedule()" class="form-grid">
+      <label class="field">
+        <span>Equipo local</span>
+        <select formControlName="homeTeamId" [disabled]="loadingTeams() || submitting()">
+          <option value="0">Selecciona un equipo</option>
+          <option *ngFor="let team of teams()" [value]="team.id">{{ team.name }}</option>
+        </select>
+        <small *ngIf="form.touched && form.controls.homeTeamId.invalid">Selecciona un equipo</small>
+      </label>
+
+      <label class="field">
+        <span>Equipo visitante</span>
+        <select formControlName="awayTeamId" [disabled]="loadingTeams() || submitting()">
+          <option value="0">Selecciona un equipo</option>
+          <option *ngFor="let team of teams()" [value]="team.id">{{ team.name }}</option>
+        </select>
+        <small *ngIf="sameTeamSelected()">El equipo visitante debe ser distinto del local.</small>
+      </label>
+
+      <label class="field">
+        <span>Fecha</span>
+        <input type="date" formControlName="date" [disabled]="submitting()" />
+      </label>
+
+      <label class="field">
+        <span>Hora</span>
+        <input type="time" formControlName="time" [disabled]="submitting()" />
+      </label>
+
+      <label class="field">
+        <span>Duración por cuarto (segundos)</span>
+        <input type="number" formControlName="quarterDurationSeconds" min="60" step="30" [disabled]="submitting()" />
+      </label>
+
+      <div class="actions">
+        <button type="submit" [disabled]="submitting()">
+          <mat-icon>event_available</mat-icon>
+          Programar partido
+        </button>
+      </div>
+    </form>
+  </div>
+</section>

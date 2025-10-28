@@ -1,0 +1,133 @@
+{
+  "info": {
+    "name": "Matches Service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Endpoints principales para controlar partidos"
+  },
+  "item": [
+    {
+      "name": "Listar partidos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/matches",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "matches"]
+        }
+      }
+    },
+    {
+      "name": "Programar partido",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"homeTeamId\": 1,\n  \"awayTeamId\": 2,\n  \"date\": \"2025-01-12\",\n  \"time\": \"19:30\",\n  \"quarterDurationSeconds\": 600\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/matches/programar",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "matches", "programar"]
+        }
+      }
+    },
+    {
+      "name": "Actualizar marcador",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"team\": \"home\",\n  \"points\": 2\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/matches/{{matchId}}/score",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "matches", "{{matchId}}", "score"]
+        }
+      }
+    },
+    {
+      "name": "Registrar falta",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"team\": \"away\",\n  \"amount\": 1\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/matches/{{matchId}}/foul",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "matches", "{{matchId}}", "foul"]
+        }
+      }
+    },
+    {
+      "name": "Controlar temporizador",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"action\": \"start\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/matches/{{matchId}}/timer",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "matches", "{{matchId}}", "timer"]
+        }
+      }
+    },
+    {
+      "name": "Siguiente cuarto",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/matches/{{matchId}}/quarter",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "matches", "{{matchId}}", "quarter"]
+        }
+      }
+    },
+    {
+      "name": "Finalizar partido",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"homeScore\": 80,\n  \"awayScore\": 78\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/matches/{{matchId}}/finish",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "matches", "{{matchId}}", "finish"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost"
+    },
+    {
+      "key": "matchId",
+      "value": "1"
+    }
+  ]
+}

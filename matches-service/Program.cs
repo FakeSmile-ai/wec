@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using MatchesService.Data;
 using MatchesService.Repositories;
 using MatchesService.Services;
-using MatchesService.Services.Runtime;
 using MatchesService.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,10 +20,13 @@ builder.Services.AddControllers()
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-        policy.AllowAnyOrigin()
+    options.AddPolicy("Frontend", policy =>
+        policy.WithOrigins(
+                builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]?>() ??
+                new[] { "http://localhost", "http://localhost:4200" })
               .AllowAnyHeader()
-              .AllowAnyMethod());
+              .AllowAnyMethod()
+              .AllowCredentials());
 });
 
 // DbContext (SQL Server)
@@ -34,13 +36,11 @@ builder.Services.AddDbContext<MatchesDbContext>(options =>
 // DI
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddScoped<IMatchService, MatchService>();
-builder.Services.AddSingleton<IMatchRunTime, MatchRunTime>();
+builder.Services.Configure<TeamsServiceOptions>(builder.Configuration.GetSection("TeamsService"));
+builder.Services.AddHttpClient<ITeamClientService, TeamClientService>();
 
 // SignalR
 builder.Services.AddSignalR();
-
-// HttpClient externo
-builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
@@ -65,7 +65,7 @@ if (app.Environment.IsDevelopment())
 // En docker suele bastar con HTTP
 // app.UseHttpsRedirection();
 
-app.UseCors("AllowAll");
+app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -73,7 +73,7 @@ app.UseAuthorization();
 // 🔌 ENDPOINTS Y HUBS
 // ==========================================================
 app.MapControllers();
-app.MapHub<ScoreHub>("/hub/score");
+app.MapHub<MatchHub>("/hub/matches");
 
 // Health (para curl rápido)
 app.MapGet("/health", () => Results.Ok("OK"));
