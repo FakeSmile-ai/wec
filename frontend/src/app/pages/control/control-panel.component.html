@@ -16,6 +16,10 @@
             <mat-icon>dashboard</mat-icon>
             Panel admin
           </button>
+          <button class="ghost" [routerLink]="['/scoreboard', matchId]" [disabled]="!matchId">
+            <mat-icon>tv</mat-icon>
+            Ver marcador
+          </button>
           <button class="ghost" (click)="chooseMatch()">
             <mat-icon>sports</mat-icon>
             Elegir partido

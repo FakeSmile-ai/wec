@@ -253,6 +253,36 @@
   display: grid;
   gap: 14px;
 }
+.match-wrapper {
+  display: grid;
+  gap: 12px;
+}
+.slot-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.slot-actions button {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: rgba(15, 23, 42, 0.55);
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.slot-actions button:hover,
+.slot-actions button:focus-visible {
+  border-color: rgba(99, 102, 241, 0.55);
+  background: rgba(30, 64, 175, 0.25);
+  outline: none;
+}
+.slot-actions button.ghost {
+  background: transparent;
+}
 
 .qualifiers-list {
   display: flex;

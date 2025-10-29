@@ -31,7 +31,10 @@ public class MatchService : IMatchService
     public async Task<IReadOnlyList<MatchDto>> GetMatchesAsync(CancellationToken cancellationToken = default)
     {
         var matches = await _repository.GetAllAsync();
-        var teams = await BuildTeamLookupAsync(cancellationToken);
+        var teamIds = matches
+            .SelectMany(m => new[] { m.HomeTeamId, m.AwayTeamId })
+            .Distinct();
+        var teams = await BuildTeamLookupAsync(teamIds, cancellationToken);
         return matches.Select(m => MapToDto(m, teams)).ToList();
     }
 
@@ -40,7 +43,9 @@ public class MatchService : IMatchService
         var match = await _repository.GetByIdAsync(id);
         if (match is null) return null;
 
-        var teams = await BuildTeamLookupAsync(cancellationToken);
+        var teams = await BuildTeamLookupAsync(
+            match is null ? Enumerable.Empty<int>() : new[] { match.HomeTeamId, match.AwayTeamId },
+            cancellationToken);
         return MapToDto(match, teams);
     }
 
@@ -76,7 +81,7 @@ public class MatchService : IMatchService
         await _repository.AddAsync(match);
         await _repository.SaveChangesAsync();
 
-        var teams = await BuildTeamLookupAsync(cancellationToken);
+        var teams = await BuildTeamLookupAsync(new[] { match.HomeTeamId, match.AwayTeamId }, cancellationToken);
         var dto = MapToDto(match, teams);
         await BroadcastMatchUpdated(dto);
         return (true, null, dto);
@@ -117,7 +122,7 @@ public class MatchService : IMatchService
 
         await _repository.SaveChangesAsync();
 
-        var teams = await BuildTeamLookupAsync(cancellationToken);
+        var teams = await BuildTeamLookupAsync(new[] { match.HomeTeamId, match.AwayTeamId }, cancellationToken);
         var dto = MapToDto(match, teams);
 
         await _hub.Clients.Group(MatchHub.GroupName(match.Id)).SendAsync("scoreUpdated", new
@@ -157,7 +162,7 @@ public class MatchService : IMatchService
 
         await _repository.SaveChangesAsync();
 
-        var teams = await BuildTeamLookupAsync(cancellationToken);
+        var teams = await BuildTeamLookupAsync(new[] { match.HomeTeamId, match.AwayTeamId }, cancellationToken);
         var dto = MapToDto(match, teams);
 
         await _hub.Clients.Group(MatchHub.GroupName(match.Id)).SendAsync("foulsUpdated", new
@@ -242,7 +247,7 @@ public class MatchService : IMatchService
 
         await _repository.SaveChangesAsync();
 
-        var teams = await BuildTeamLookupAsync(cancellationToken);
+        var teams = await BuildTeamLookupAsync(new[] { match.HomeTeamId, match.AwayTeamId }, cancellationToken);
         var dto = MapToDto(match, teams);
         foreach (var (name, payload) in events)
         {
@@ -269,7 +274,7 @@ public class MatchService : IMatchService
 
         await _repository.SaveChangesAsync();
 
-        var teams = await BuildTeamLookupAsync(cancellationToken);
+        var teams = await BuildTeamLookupAsync(new[] { match.HomeTeamId, match.AwayTeamId }, cancellationToken);
         var dto = MapToDto(match, teams);
 
         await _hub.Clients.Group(MatchHub.GroupName(match.Id)).SendAsync("quarterChanged", new
@@ -300,7 +305,7 @@ public class MatchService : IMatchService
 
         await _repository.SaveChangesAsync();
 
-        var teams = await BuildTeamLookupAsync(cancellationToken);
+        var teams = await BuildTeamLookupAsync(new[] { match.HomeTeamId, match.AwayTeamId }, cancellationToken);
         var dto = MapToDto(match, teams);
 
         await _hub.Clients.Group(MatchHub.GroupName(match.Id)).SendAsync("scoreUpdated", new
@@ -343,7 +348,9 @@ public class MatchService : IMatchService
         };
     }
 
-    private async Task<Dictionary<int, string>> BuildTeamLookupAsync(CancellationToken cancellationToken)
+    private async Task<Dictionary<int, string>> BuildTeamLookupAsync(
+        IEnumerable<int> requiredIds,
+        CancellationToken cancellationToken)
     {
         var lookup = new Dictionary<int, string>();
         try
@@ -360,6 +367,27 @@ public class MatchService : IMatchService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "No se pudo obtener la lista de equipos para enriquecer los partidos");
+        }
+
+        var missingIds = (requiredIds ?? Array.Empty<int>())
+            .Where(id => id > 0 && !lookup.ContainsKey(id))
+            .Distinct()
+            .ToList();
+
+        foreach (var id in missingIds)
+        {
+            try
+            {
+                var team = await _teamClient.GetTeamAsync(id, cancellationToken);
+                if (team is not null && !lookup.ContainsKey(id))
+                {
+                    lookup[id] = team.Name;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudo obtener el equipo {TeamId}", id);
+            }
         }
 
         return lookup;

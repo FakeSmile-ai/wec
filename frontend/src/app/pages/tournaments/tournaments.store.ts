@@ -7,6 +7,8 @@ import {
 } from './tournaments.models';
 import { TournamentsApiService } from '@app/services/api/tournaments.service';
 
+const DEFAULT_TOURNAMENT_ID = 'cup-current';
+
 function ensureTeamIndex(tournament: TournamentViewModel): Record<string, TournamentTeamDetail> {
   if (tournament.teamsIndex && Object.keys(tournament.teamsIndex).length) {
     return tournament.teamsIndex;
@@ -50,7 +52,7 @@ export class TournamentsStore {
   }
 
   async refresh(): Promise<void> {
-    await this.loadTournaments();
+    await this.loadTournaments(true);
   }
 
   async selectTournament(id: string): Promise<void> {
@@ -65,6 +67,7 @@ export class TournamentsStore {
   async updateMatchResult(tournamentId: string, matchId: string, scoreA: number, scoreB: number): Promise<void> {
     const payload: UpdateMatchRequest = { scoreA, scoreB, status: 'finished' };
     try {
+      this.errorState.set(null);
       const updated = await this.api.updateMatch(tournamentId, matchId, payload);
       const normalized: TournamentViewModel = {
         ...updated,
@@ -79,11 +82,38 @@ export class TournamentsStore {
     }
   }
 
-  private async loadTournaments(): Promise<void> {
+  async assignMatchToSlot(groupId: string, slotIndex: number, matchId: number | null): Promise<void> {
+    const tournamentId = this.selectedTournamentId() ?? DEFAULT_TOURNAMENT_ID;
+    try {
+      const updated = await this.api.assignMatchToSlot(
+        tournamentId,
+        groupId,
+        slotIndex,
+        matchId
+      );
+      const normalized: TournamentViewModel = {
+        ...updated,
+        teamsIndex: ensureTeamIndex(updated)
+      };
+      this.tournamentDetailState.set(normalized);
+      this.selectedTournamentId.set(normalized.id);
+      this.syncSummary(normalized);
+    } catch (error: any) {
+      const message =
+        error?.error?.error ??
+        error?.message ??
+        'No se pudo asignar el partido al bracket.';
+      console.error('Failed to assign match to slot', message);
+      this.errorState.set(message);
+      throw error;
+    }
+  }
+
+  private async loadTournaments(forceRefresh = false): Promise<void> {
     this.loadingSummariesState.set(true);
     this.errorState.set(null);
     try {
-      const summaries = await this.api.listTournaments();
+      const summaries = await this.api.listTournaments(forceRefresh);
       this.summariesState.set(summaries);
 
       const preferredId = this.selectedTournamentId();

@@ -28,8 +28,6 @@ services:
     ports:
       - "5000:8080"
     entrypoint: ["dotnet", "AuthService.dll"]
-    volumes:
-      - /home/roberto/.microsoft/usersecrets:/root/.microsoft/usersecrets
 
   # Frontend (Nginx) 
   web:
@@ -141,6 +139,22 @@ services:
         condition: service_started
     ports:
       - "5002:8081"   # Swagger/Health locales: http://localhost:5002
+    restart: unless-stopped
+
+  tournament-service:
+    build:
+      context: ./tournament-service
+    depends_on:
+      teams-service:
+        condition: service_started
+      matches-service:
+        condition: service_started
+    environment:
+      PORT: 8083
+      TEAMS_SERVICE_BASE_URL: "http://teams-service:8082"
+      MATCHES_SERVICE_BASE_URL: "http://matches-service:8081"
+    ports:
+      - "8083:8083"
     restart: unless-stopped
 
   # Redis para report-service

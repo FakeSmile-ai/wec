@@ -97,6 +97,9 @@ export interface TournamentMatchView {
   teamA: TournamentMatchTeamSlot;
   teamB: TournamentMatchTeamSlot;
   winnerId: string | null;
+  groupId?: string;
+  slotIndex?: number;
+  isPlaceholder?: boolean;
 }
 
 export interface TournamentGroupView {

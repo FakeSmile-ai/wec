@@ -14,9 +14,10 @@ export class TournamentsApiService {
   // Usa el proxy dev ya configurado (proxy.conf.json) => http://localhost:5220
   private readonly base = '/api';
 
-  listTournaments(): Promise<TournamentSummary[]> {
+  listTournaments(refresh = false): Promise<TournamentSummary[]> {
+    const suffix = refresh ? '?refresh=true' : '';
     return firstValueFrom(
-      this.http.get<TournamentSummary[]>(`${this.base}/tournaments`)
+      this.http.get<TournamentSummary[]>(`${this.base}/tournaments${suffix}`)
     );
   }
 
@@ -35,6 +36,20 @@ export class TournamentsApiService {
       this.http.patch<TournamentViewModel>(
         `${this.base}/tournaments/${tournamentId}/matches/${matchId}`,
         payload
+      )
+    );
+  }
+
+  assignMatchToSlot(
+    tournamentId: string,
+    groupId: string,
+    slotIndex: number,
+    matchId: number | null
+  ): Promise<TournamentViewModel> {
+    return firstValueFrom(
+      this.http.put<TournamentViewModel>(
+        `${this.base}/tournaments/${tournamentId}/groups/${groupId}/slots/${slotIndex}`,
+        { matchId }
       )
     );
   }

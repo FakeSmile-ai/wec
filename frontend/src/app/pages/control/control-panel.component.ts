@@ -8,6 +8,7 @@ import Swal from 'sweetalert2';
 import * as signalR from '@microsoft/signalr';
 
 import { MatchesService, MatchModel, TeamSide } from '@app/services/api/matches.service';
+import { TournamentsStore } from '@app/pages/tournaments/tournaments.store';
 import { PickMatchDialogComponent } from './match-dialog.component';
 
 @Component({
@@ -22,6 +23,7 @@ export class ControlPanelComponent implements OnDestroy {
   private readonly router = inject(Router);
   private readonly matchesService = inject(MatchesService);
   private readonly dialog = inject(MatDialog);
+  private readonly tournamentsStore = inject(TournamentsStore);
 
   private hub?: signalR.HubConnection;
 
@@ -179,6 +181,7 @@ export class ControlPanelComponent implements OnDestroy {
         next: updated => {
           this.mergeMatch(updated);
           this.configureCountdown(false, 0);
+          this.syncTournamentBracket(updated);
           this.pendingAction.set(false);
           Swal.fire({
             title: 'Partido finalizado',
@@ -326,5 +329,13 @@ export class ControlPanelComponent implements OnDestroy {
       this.countdownTimer = undefined;
     }
     this.countdownEndsAt = undefined;
+  }
+
+  private syncTournamentBracket(updated: MatchModel): void {
+    void this.tournamentsStore
+      .updateMatchResult('cup-current', String(updated.id), updated.homeScore, updated.awayScore)
+      .catch(error =>
+        console.debug('No se pudo sincronizar el torneo con el resultado final', error)
+      );
   }
 }

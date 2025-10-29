@@ -62,12 +62,26 @@
           <section class="stage">
             <h3>Enfrentamientos iniciales</h3>
             <div class="match-list">
-              <app-tournament-match-card
-                *ngFor="let match of groupA.matches; trackBy: trackByMatch"
-                [match]="match"
-                [highlightTeamId]="activeTeamId()"
-                (teamFocus)="focusTeam($event)"
-              ></app-tournament-match-card>
+              <div class="match-wrapper" *ngFor="let match of groupA.matches; trackBy: trackByMatch">
+                <app-tournament-match-card
+                  [match]="match"
+                  [highlightTeamId]="activeTeamId()"
+                  (teamFocus)="focusTeam($event)"
+                ></app-tournament-match-card>
+                <div class="slot-actions">
+                  <button type="button" (click)="assignMatch('group-a', match.slotIndex ?? 0)">
+                    {{ match.isPlaceholder ? 'Asignar partido' : 'Cambiar partido' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="ghost"
+                    *ngIf="!match.isPlaceholder"
+                    (click)="clearSlot('group-a', match.slotIndex ?? 0)"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -154,12 +168,26 @@
           <section class="stage">
             <h3>Enfrentamientos iniciales</h3>
             <div class="match-list">
-              <app-tournament-match-card
-                *ngFor="let match of groupB.matches; trackBy: trackByMatch"
-                [match]="match"
-                [highlightTeamId]="activeTeamId()"
-                (teamFocus)="focusTeam($event)"
-              ></app-tournament-match-card>
+              <div class="match-wrapper" *ngFor="let match of groupB.matches; trackBy: trackByMatch">
+                <app-tournament-match-card
+                  [match]="match"
+                  [highlightTeamId]="activeTeamId()"
+                  (teamFocus)="focusTeam($event)"
+                ></app-tournament-match-card>
+                <div class="slot-actions">
+                  <button type="button" (click)="assignMatch('group-b', match.slotIndex ?? 0)">
+                    {{ match.isPlaceholder ? 'Asignar partido' : 'Cambiar partido' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="ghost"
+                    *ngIf="!match.isPlaceholder"
+                    (click)="clearSlot('group-b', match.slotIndex ?? 0)"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
 
